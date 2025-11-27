@@ -27,7 +27,6 @@ jobs:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: 'task_manager/package-lock.json'
-        working-directory: task_manager
       
       - name: Install dependencies
         working-directory: task_manager
