@@ -1,0 +1,44 @@
+========================================
+GAMIFIED TASK MANAGER - HOW TO START
+========================================
+
+EASIEST WAY (Windows):
+----------------------
+1. Double-click: start_with_browser.bat
+   - Automatically installs dependencies (if needed)
+   - Starts the server
+   - Opens your browser automatically!
+
+ALTERNATIVE WAY:
+----------------
+1. Double-click: start.bat
+   - Starts the server
+   - Manually open: http://localhost:3000
+
+IF DEPENDENCIES NOT INSTALLED:
+------------------------------
+1. Double-click: install.bat
+   - Installs all required packages
+2. Then run: start.bat or start_with_browser.bat
+
+MANUAL COMMAND LINE:
+--------------------
+1. Open Command Prompt or PowerShell
+2. Navigate to task_manager folder:
+   cd "C:\Users\ofragkog\OneDrive - OTE\Domain Leader\Presentations\Cursor\Customer Systems\presentation\task_manager"
+3. Install dependencies:
+   npm install
+4. Start the app:
+   npm run dev
+5. Open browser: http://localhost:3000
+
+TROUBLESHOOTING:
+----------------
+- "npm not found": Install Node.js from nodejs.org
+- "Port 3000 in use": Close other apps or change port in package.json
+- See QUICK_START.md for more help
+
+========================================
+Enjoy your Gamified Task Manager! 🎮
+========================================
+
