@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Menu, X, CheckSquare, Users, Database, BarChart3, FileText, Calendar, Award, Moon, Sun, Bell, Link2, Download } from 'lucide-react';
+import { Menu, X, CheckSquare, Users, Database, BarChart3, FileText, Calendar, Award, Moon, Sun, Bell, Link2, Download, UserCircle } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 
-type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export';
+type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export' | 'profile';
 
 interface SidebarMenuProps {
   activeView: ViewType;
@@ -234,6 +234,24 @@ export function SidebarMenu({ activeView, onViewChange }: SidebarMenuProps) {
           </motion.button>
 
           <div className="border-t border-gray-200 dark:border-gray-700 my-2" />
+
+          <motion.button
+            whileHover={{ scale: 1.02, x: 4 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onViewChange('profile')}
+            className={`
+              w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left
+              ${activeView === 'profile'
+                ? 'bg-gradient-to-r from-purple-100 to-pink-100 border-2 border-purple-300 shadow-md'
+                : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
+              }
+            `}
+          >
+            <UserCircle className={`w-5 h-5 ${activeView === 'profile' ? 'text-purple-600' : 'text-gray-600'}`} />
+            <span className={`font-semibold ${activeView === 'profile' ? 'text-purple-700' : 'text-gray-700'}`}>
+              Profile
+            </span>
+          </motion.button>
 
           <motion.button
             whileHover={{ scale: 1.02, x: 4 }}

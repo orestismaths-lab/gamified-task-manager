@@ -17,13 +17,14 @@ import { Achievements } from './Achievements';
 import { NotificationSettings } from './NotificationSettings';
 import { TaskDependencies } from './TaskDependencies';
 import { ExportOptions } from './ExportOptions';
+import { Profile } from './Profile';
 import { Priority, TaskStatus } from '@/types';
 import { triggerConfetti } from '@/lib/confetti';
 import { setupNotificationCheck } from '@/lib/notifications';
 import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from './AuthModal';
 
-type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export';
+type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export' | 'profile';
 
 export function Dashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -347,6 +348,8 @@ export function Dashboard() {
           <TaskDependencies />
         ) : activeView === 'export' ? (
           <ExportOptions />
+        ) : activeView === 'profile' ? (
+          <Profile />
         ) : (
           <DataManagement />
         )}
