@@ -26,17 +26,6 @@ jobs:
         with:
           node-version: '18'
       
-      - name: Ensure node_modules directory exists
-        run: mkdir -p task_manager/node_modules
-      
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: task_manager/node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('task_manager/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      
       - name: Install dependencies
         working-directory: task_manager
         run: npm ci
