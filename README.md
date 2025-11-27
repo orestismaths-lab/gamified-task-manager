@@ -151,6 +151,35 @@ npm run build
 npm start
 ```
 
+## 🚀 Deployment - Δώσε την εφαρμογή σε άλλους!
+
+### Quick Start (5 λεπτά!)
+
+**Συνιστάται: Vercel** (Δωρεάν, Εύκολο, Perfect για Next.js)
+
+1. Push το code στο GitHub
+2. Πήγαινε στο: https://vercel.com/new
+3. Import το repository
+4. **Root Directory:** `task_manager` ⚠️
+5. Deploy!
+
+**Έτοιμο!** Θα πάρεις ένα public URL που μπορείς να μοιραστείς!
+
+### 📚 Περισσότερες Επιλογές
+
+- **Quick Guide:** Δες το `DEPLOY_QUICK.md` για 5-λεπτο deployment
+- **Full Guide:** Δες το `DEPLOYMENT_GUIDE.md` για όλες τις επιλογές:
+  - Vercel (Συνιστάται)
+  - Netlify
+  - GitHub Pages
+  - Railway
+  - Render
+  - Self-Hosting (VPS)
+
+### ⚠️ Σημαντικό για Deployment
+
+Η εφαρμογή χρησιμοποιεί **LocalStorage** - κάθε χρήστης έχει τα δικά του data στο browser του. Δεν χρειάζεται database ή backend!
+
 ## License
 
 MIT

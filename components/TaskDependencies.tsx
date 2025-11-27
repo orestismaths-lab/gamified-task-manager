@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useTaskManager } from '@/context/TaskManagerContext';
 import { Link2, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
+import type { Task } from '@/types';
 
 export function TaskDependencies() {
   const { tasks, updateTask } = useTaskManager();
@@ -27,8 +28,8 @@ export function TaskDependencies() {
     const dependentTasks = tasks.filter(t => t.blocks?.includes(selectedTask.id));
 
     return {
-      dependsOn: dependsOn.map(id => tasks.find(t => t.id === id)).filter(Boolean),
-      blocks: blocks.map(id => tasks.find(t => t.id === id)).filter(Boolean),
+      dependsOn: dependsOn.map(id => tasks.find(t => t.id === id)).filter((task): task is NonNullable<typeof task> => task !== null && task !== undefined),
+      blocks: blocks.map(id => tasks.find(t => t.id === id)).filter((task): task is NonNullable<typeof task> => task !== null && task !== undefined),
       blockingTasks,
       dependentTasks,
     };
@@ -238,29 +239,31 @@ export function TaskDependencies() {
               </div>
               {dependencyGraph && dependencyGraph.dependsOn.length > 0 ? (
                 <div className="space-y-2">
-                  {dependencyGraph.dependsOn.map(task => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
-                    >
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-800">{task.title}</div>
-                        <div className="text-sm text-gray-600">
-                          {task.completed ? (
-                            <span className="text-green-600">✓ Completed</span>
-                          ) : (
-                            <span className="text-red-600">✗ Not completed</span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveDependency(task.id)}
-                        className="px-3 py-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm"
+                  {dependencyGraph.dependsOn
+                    .filter((task): task is NonNullable<typeof task> => task !== null && task !== undefined)
+                    .map(task => (
+                      <div
+                        key={task.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
                       >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800">{task.title}</div>
+                          <div className="text-sm text-gray-600">
+                            {task.completed ? (
+                              <span className="text-green-600">✓ Completed</span>
+                            ) : (
+                              <span className="text-red-600">✗ Not completed</span>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveDependency(task.id)}
+                          className="px-3 py-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <p className="text-gray-500 text-sm">No dependencies</p>
@@ -296,23 +299,25 @@ export function TaskDependencies() {
               </div>
               {dependencyGraph && dependencyGraph.blocks.length > 0 ? (
                 <div className="space-y-2">
-                  {dependencyGraph.blocks.map(task => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
-                    >
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-800">{task.title}</div>
-                        <div className="text-sm text-gray-600">This task must complete first</div>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveBlocking(task.id)}
-                        className="px-3 py-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm"
+                  {dependencyGraph.blocks
+                    .filter((task): task is NonNullable<typeof task> => task !== null && task !== undefined)
+                    .map(task => (
+                      <div
+                        key={task.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
                       >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800">{task.title}</div>
+                          <div className="text-sm text-gray-600">This task must complete first</div>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveBlocking(task.id)}
+                          className="px-3 py-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 <p className="text-gray-500 text-sm">No blocking tasks</p>

@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Bell, Clock, CheckCircle } from 'lucide-react';
-import { notificationStorage, NotificationSettings, requestNotificationPermission } from '@/lib/notifications';
+import { notificationStorage, requestNotificationPermission } from '@/lib/notifications';
+import type { NotificationSettings } from '@/lib/notifications';
 
 export function NotificationSettings() {
   const [settings, setSettings] = useState<NotificationSettings>(notificationStorage.getSettings());

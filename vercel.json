@@ -1,0 +1,14 @@
+{
+  "buildCommand": "cd task_manager && npm run build",
+  "outputDirectory": "task_manager/.next",
+  "devCommand": "cd task_manager && npm run dev",
+  "installCommand": "cd task_manager && npm install",
+  "framework": "nextjs",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
+}
+

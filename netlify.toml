@@ -1,0 +1,11 @@
+[build]
+  base = "task_manager"
+  command = "npm run build"
+  publish = "task_manager/.next"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+

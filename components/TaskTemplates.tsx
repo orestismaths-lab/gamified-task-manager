@@ -6,7 +6,7 @@ import { useTaskManager } from '@/context/TaskManagerContext';
 import { templateStorage, TaskTemplate } from '@/lib/templates';
 import { Plus, Trash2, Copy, FileText, Edit2, X, Save, Tag as TagIcon, Folder } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { Priority, RecurrenceType } from '@/types';
+import { Priority, RecurrenceType, TaskStatus } from '@/types';
 
 type CreateMode = 'from-task' | 'manual' | null;
 
@@ -33,6 +33,7 @@ export function TaskTemplates() {
     title: '',
     description: '',
     priority: 'medium' as Priority,
+    status: 'todo' as TaskStatus,
     tags: '',
     category: '',
     templateTags: '',
@@ -89,6 +90,7 @@ export function TaskTemplates() {
         description: task.description,
         ownerId: task.ownerId,
         priority: task.priority,
+        status: task.status || 'todo',
         dueDate: task.dueDate,
         tags: task.tags,
         subtasks: task.subtasks,
@@ -128,6 +130,7 @@ export function TaskTemplates() {
         description: manualForm.description || undefined, // Preserve whitespace and formatting (spaces, bullets, line breaks)
         ownerId: manualForm.ownerId || selectedMemberId || members[0]?.id || '',
         priority: manualForm.priority,
+        status: manualForm.status || 'todo',
         dueDate: '',
         tags: tagArray,
         subtasks,
@@ -159,6 +162,7 @@ export function TaskTemplates() {
       title: '',
       description: '',
       priority: 'medium',
+      status: 'todo',
       tags: '',
       category: '',
       templateTags: '',
@@ -210,9 +214,12 @@ export function TaskTemplates() {
   const handleSaveEdit = () => {
     if (!editingId || !editForm.name?.trim()) return;
 
-    const tagArray = typeof editForm.tags === 'string'
-      ? editForm.tags.split(',').map(t => t.trim()).filter(t => t.length > 0)
-      : editForm.tags || [];
+    const tagsValue: string | string[] | undefined = editForm.tags as string | string[] | undefined;
+    const tagArray: string[] = tagsValue 
+      ? (typeof tagsValue === 'string'
+          ? tagsValue.split(',').map(t => t.trim()).filter(t => t.length > 0)
+          : Array.isArray(tagsValue) ? [...tagsValue] : [])
+      : [];
 
     templateStorage.updateTemplate(editingId, {
       name: editForm.name.trim(),
@@ -615,7 +622,7 @@ export function TaskTemplates() {
                     <input
                       type="text"
                       value={Array.isArray(editForm.tags) ? editForm.tags.join(', ') : editForm.tags || ''}
-                      onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                      onChange={(e) => setEditForm({ ...editForm, tags: e.target.value as any })}
                       placeholder="Template tags (comma-separated)"
                       className="w-full px-3 py-2 rounded-lg border-2 border-gray-200 focus:border-purple-400 focus:outline-none"
                     />
