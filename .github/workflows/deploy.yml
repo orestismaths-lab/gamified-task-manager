@@ -26,17 +26,16 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: task_manager/package-lock.json
+          cache-dependency-path: 'task_manager/package-lock.json'
+        working-directory: task_manager
       
       - name: Install dependencies
-        run: |
-          cd task_manager
-          npm ci
+        working-directory: task_manager
+        run: npm ci
       
       - name: Build
-        run: |
-          cd task_manager
-          npm run build
+        working-directory: task_manager
+        run: npm run build
         env:
           NODE_ENV: production
       
