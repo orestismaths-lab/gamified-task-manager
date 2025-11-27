@@ -1,57 +1,22 @@
-name: Deploy to GitHub Pages
+# GitHub Actions Workflow - Disabled
+# This project uses Vercel for deployment
+# GitHub Pages requires static export which is not compatible with this Next.js App Router setup
+
+name: Deploy to GitHub Pages (Disabled)
 
 on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+  workflow_dispatch:  # Only manual trigger, not on push
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
 
 jobs:
-  build:
+  disabled:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        working-directory: task_manager
-        run: npm ci
-      
-      - name: Build
-        working-directory: task_manager
-        run: npm run build
-        env:
-          NODE_ENV: production
-      
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-      
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: task_manager/out
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
+      - name: Workflow Disabled
+        run: |
+          echo "This workflow is disabled."
+          echo "This project uses Vercel for deployment."
+          echo "GitHub Pages requires static export which is not compatible with Next.js App Router."
+          echo "Please use Vercel instead: https://vercel.com"
