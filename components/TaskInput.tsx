@@ -3,6 +3,7 @@
 import { useState, FormEvent, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Calendar, Tag, FileText, X, Repeat, Check, Trash2 } from 'lucide-react';
+import { TaskAssignment } from './TaskAssignment';
 import { useTaskManager } from '@/context/TaskManagerContext';
 import { Priority, RecurrenceType, TaskStatus, Subtask } from '@/types';
 import { format, parseISO } from 'date-fns';
@@ -22,6 +23,7 @@ export function TaskInput() {
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('none');
   const [recurrenceInterval, setRecurrenceInterval] = useState(1);
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
+  const [assignedTo, setAssignedTo] = useState<string[]>([]);
   const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -76,31 +78,52 @@ export function TaskInput() {
     setShowTemplateSelector(false);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !selectedMemberId) return;
+    
+    // Validation
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle || trimmedTitle.length === 0) {
+      alert('Please enter a task title');
+      return;
+    }
+    
+    if (assignedTo.length === 0 && !selectedMemberId) {
+      alert('Please assign the task to at least one member');
+      return;
+    }
 
     const tagArray = tags
       .split(',')
       .map(t => t.trim())
       .filter(t => t.length > 0);
+    
+    // Sanitize title (prevent XSS)
+    const sanitizedTitle = trimmedTitle.replace(/[<>]/g, '');
 
-    addTask({
-      title: title.trim(),
-      description: description || undefined, // Preserve whitespace and formatting (spaces, bullets, line breaks)
-      ownerId: selectedMemberId,
-      priority,
-      status,
-      dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
-      tags: tagArray,
-      subtasks: subtasks,
-      completed: status === 'completed',
-      recurrence: recurrenceType !== 'none' ? {
-        type: recurrenceType,
-        interval: recurrenceInterval,
-        endDate: recurrenceEndDate || undefined,
-      } : undefined,
-    });
+    try {
+      await addTask({
+        title: sanitizedTitle,
+        description: description || undefined, // Preserve whitespace and formatting (spaces, bullets, line breaks)
+        ownerId: selectedMemberId || (assignedTo.length > 0 ? assignedTo[0] : ''),
+        priority,
+        status,
+        dueDate: dueDate ? new Date(dueDate).toISOString() : new Date().toISOString(),
+        tags: tagArray,
+        subtasks: subtasks,
+        completed: status === 'completed',
+        assignedTo: assignedTo.length > 0 ? assignedTo : (selectedMemberId ? [selectedMemberId] : []),
+        recurrence: recurrenceType !== 'none' ? {
+          type: recurrenceType,
+          interval: recurrenceInterval,
+          endDate: recurrenceEndDate || undefined,
+        } : undefined,
+      });
+    } catch (error) {
+      console.error('Error creating task:', error);
+      alert(error instanceof Error ? error.message : 'Failed to create task');
+      return;
+    }
 
     // Reset form
     setTitle('');
@@ -114,6 +137,7 @@ export function TaskInput() {
     setRecurrenceType('none');
     setRecurrenceInterval(1);
     setRecurrenceEndDate('');
+    setAssignedTo([]);
     setIsExpanded(false);
   };
 
@@ -238,22 +262,18 @@ export function TaskInput() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="min-w-0">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Owner</label>
-                    <select
-                      value={selectedMemberId || ''}
-                      onChange={(e) => {
-                        const event = new CustomEvent('select-member', { detail: { memberId: e.target.value } });
-                        window.dispatchEvent(event);
+                    <TaskAssignment
+                      members={members}
+                      assignedTo={assignedTo.length > 0 ? assignedTo : (selectedMemberId ? [selectedMemberId] : [])}
+                      onChange={(memberIds) => {
+                        setAssignedTo(memberIds);
+                        // Also update selectedMemberId for backward compatibility
+                        if (memberIds.length > 0) {
+                          const event = new CustomEvent('select-member', { detail: { memberId: memberIds[0] } });
+                          window.dispatchEvent(event);
+                        }
                       }}
-                      className="w-full px-4 py-2 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 dark:focus:border-purple-500 focus:outline-none transition-colors"
-                      required
-                    >
-                      {members.map(member => (
-                        <option key={member.id} value={member.id}>
-                          {member.name}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
                   <div className="min-w-0">

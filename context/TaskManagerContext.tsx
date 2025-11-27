@@ -6,6 +6,9 @@ import { addDays, addWeeks, addMonths, parseISO, format } from 'date-fns';
 import { storage } from '@/lib/storage';
 import { useGamification } from '@/hooks/useGamification';
 import { debounce } from '@/lib/debounce';
+import { useAuth } from '@/context/AuthContext';
+import { tasksAPI } from '@/lib/api/tasks';
+import { membersAPI } from '@/lib/api/members';
 
 interface TaskManagerContextType {
   // State
@@ -14,9 +17,9 @@ interface TaskManagerContextType {
   selectedMemberId: string | null;
   
   // Task operations
-  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
+  addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
   toggleTaskComplete: (id: string) => void;
   
   // Subtask operations
@@ -26,9 +29,9 @@ interface TaskManagerContextType {
   deleteSubtask: (taskId: string, subtaskId: string) => void;
   
   // Member operations
-  addMember: (member: Omit<Member, 'id' | 'xp' | 'level'>) => void;
-  updateMember: (id: string, updates: Partial<Member>) => void;
-  deleteMember: (id: string) => void;
+  addMember: (member: Omit<Member, 'id' | 'xp' | 'level'>) => Promise<void>;
+  updateMember: (id: string, updates: Partial<Member>) => Promise<void>;
+  deleteMember: (id: string) => Promise<void>;
   setSelectedMember: (memberId: string | null) => void;
   
   // Computed values
@@ -53,6 +56,7 @@ interface TaskManagerContextType {
 const TaskManagerContext = createContext<TaskManagerContextType | undefined>(undefined);
 
 export function TaskManagerProvider({ children }: { children: React.ReactNode }) {
+  const { user, member: authMember } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
@@ -62,50 +66,87 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     priority: 'all' as Priority | 'all',
     searchQuery: '',
   });
+  const [useFirestore, setUseFirestore] = useState(false);
 
   const { addXP, removeXP } = useGamification();
 
-  // Load data from localStorage on mount
+  // Determine if we should use Firestore or localStorage
   useEffect(() => {
-    const loadedTasks = storage.getTasks();
-    const loadedMembers = storage.getMembers();
-    const loadedSelectedMember = storage.getSelectedMemberId();
+    setUseFirestore(!!user);
+  }, [user]);
 
-    // Migrate old tasks to include status field
-    const migratedTasks = loadedTasks.map(task => {
-      if (!task.status) {
-        return {
-          ...task,
-          status: (task.completed ? 'completed' : 'todo') as TaskStatus,
-        };
-      }
-      return task;
-    });
+  // Load data from Firestore or localStorage
+  useEffect(() => {
+    if (useFirestore && user?.uid) {
+      // Use Firestore with real-time listeners
+      const unsubscribeTasks = tasksAPI.subscribeToTasks(
+        (firestoreTasks) => {
+          setTasks(firestoreTasks);
+        },
+        authMember?.id ? { assignedTo: authMember.id } : undefined
+      );
 
-    if (migratedTasks.length !== loadedTasks.length || migratedTasks.some((t, i) => t.status !== loadedTasks[i]?.status)) {
-      setTasks(migratedTasks);
-      storage.saveTasks(migratedTasks);
-    } else {
-      setTasks(loadedTasks);
-    }
+      const unsubscribeMembers = membersAPI.subscribeToMembers((firestoreMembers) => {
+        setMembers(firestoreMembers);
+        // Auto-select auth member if exists (only once, not on every update)
+        setSelectedMemberId((currentSelectedId) => {
+          if (authMember && !currentSelectedId) {
+            const memberInList = firestoreMembers.find(m => m.userId === authMember.userId);
+            if (memberInList) {
+              return memberInList.id;
+            }
+          }
+          return currentSelectedId;
+        });
+      });
 
-    setMembers(loadedMembers);
-    setSelectedMemberId(loadedSelectedMember);
-
-    // Initialize with default member if none exist
-    if (loadedMembers.length === 0) {
-      const defaultMember: Member = {
-        id: 'default-1',
-        name: 'You',
-        xp: 0,
-        level: 1,
+      return () => {
+        unsubscribeTasks();
+        unsubscribeMembers();
       };
-      setMembers([defaultMember]);
-      storage.saveMembers([defaultMember]);
-      setSelectedMemberId(defaultMember.id);
-      storage.saveSelectedMemberId(defaultMember.id);
+    } else {
+      // Use localStorage (fallback or not logged in)
+      const loadedTasks = storage.getTasks();
+      const loadedMembers = storage.getMembers();
+      const loadedSelectedMember = storage.getSelectedMemberId();
+
+      // Migrate old tasks to include status field
+      const migratedTasks = loadedTasks.map(task => {
+        if (!task.status) {
+          return {
+            ...task,
+            status: (task.completed ? 'completed' : 'todo') as TaskStatus,
+          };
+        }
+        return task;
+      });
+
+      if (migratedTasks.length !== loadedTasks.length || migratedTasks.some((t, i) => t.status !== loadedTasks[i]?.status)) {
+        setTasks(migratedTasks);
+        storage.saveTasks(migratedTasks);
+      } else {
+        setTasks(loadedTasks);
+      }
+
+      setMembers(loadedMembers);
+      setSelectedMemberId(loadedSelectedMember);
+
+      // Initialize with default member if none exist
+      if (loadedMembers.length === 0) {
+        const defaultMember: Member = {
+          id: 'default-1',
+          name: 'You',
+          xp: 0,
+          level: 1,
+        };
+        setMembers([defaultMember]);
+        storage.saveMembers([defaultMember]);
+        setSelectedMemberId(defaultMember.id);
+        storage.saveSelectedMemberId(defaultMember.id);
+      }
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useFirestore, user?.uid, authMember?.id]);
 
   // Debounced save functions to avoid excessive localStorage writes
   const debouncedSaveTasks = useMemo(
@@ -129,18 +170,24 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     []
   );
 
-  // Save to localStorage whenever state changes (debounced)
+  // Save to localStorage whenever state changes (debounced) - only if not using Firestore
   useEffect(() => {
-    debouncedSaveTasks(tasks);
-  }, [tasks, debouncedSaveTasks]);
+    if (!useFirestore) {
+      debouncedSaveTasks(tasks);
+    }
+  }, [tasks, debouncedSaveTasks, useFirestore]);
 
   useEffect(() => {
-    debouncedSaveMembers(members);
-  }, [members, debouncedSaveMembers]);
+    if (!useFirestore) {
+      debouncedSaveMembers(members);
+    }
+  }, [members, debouncedSaveMembers, useFirestore]);
 
   useEffect(() => {
-    debouncedSaveSelectedMember(selectedMemberId);
-  }, [selectedMemberId, debouncedSaveSelectedMember]);
+    if (!useFirestore) {
+      debouncedSaveSelectedMember(selectedMemberId);
+    }
+  }, [selectedMemberId, debouncedSaveSelectedMember, useFirestore]);
 
   // Generate unique ID
   const generateId = useCallback(() => {
@@ -148,27 +195,69 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
   }, []);
 
   // Task operations
-  const addTask = useCallback((taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addTask = useCallback(async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
-    const newTask: Task = {
+    const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
       ...taskData,
       status: taskData.status || (taskData.completed ? 'completed' : 'todo'),
-      id: generateId(),
-      createdAt: now,
-      updatedAt: now,
+      assignedTo: taskData.assignedTo || [taskData.ownerId].filter(Boolean),
+      createdBy: user?.uid || undefined,
     };
-    setTasks(prev => [...prev, newTask]);
-  }, [generateId]);
 
-  const updateTask = useCallback((id: string, updates: Partial<Task>) => {
-    setTasks(prev => prev.map(task => 
-      task.id === id 
-        ? { ...task, ...updates, updatedAt: new Date().toISOString() }
-        : task
-    ));
-  }, []);
+    if (useFirestore && user?.uid) {
+      // Save to Firestore
+      try {
+        await tasksAPI.createTask(newTaskData, user.uid);
+        // Real-time listener will update state automatically
+      } catch (error) {
+        console.error('Error creating task:', error);
+        // Fallback to local state
+        const newTask: Task = {
+          ...newTaskData,
+          id: generateId(),
+          createdAt: now,
+          updatedAt: now,
+        };
+        setTasks(prev => [...prev, newTask]);
+      }
+    } else {
+      // Save to localStorage
+      const newTask: Task = {
+        ...newTaskData,
+        id: generateId(),
+        createdAt: now,
+        updatedAt: now,
+      };
+      setTasks(prev => [...prev, newTask]);
+    }
+  }, [generateId, useFirestore, user]);
 
-  const deleteTask = useCallback((id: string) => {
+  const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
+    if (useFirestore && user) {
+      // Update in Firestore
+      try {
+        await tasksAPI.updateTask(id, updates);
+        // Real-time listener will update state automatically
+      } catch (error) {
+        console.error('Error updating task:', error);
+        // Fallback to local state
+        setTasks(prev => prev.map(task => 
+          task.id === id 
+            ? { ...task, ...updates, updatedAt: new Date().toISOString() }
+            : task
+        ));
+      }
+    } else {
+      // Update in localStorage
+      setTasks(prev => prev.map(task => 
+        task.id === id 
+          ? { ...task, ...updates, updatedAt: new Date().toISOString() }
+          : task
+      ));
+    }
+  }, [useFirestore, user]);
+
+  const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find(t => t.id === id);
     if (task?.completed && task.ownerId) {
       // Remove XP for completed task
@@ -178,8 +267,22 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         removeXP(task.ownerId, -10);
       });
     }
-    setTasks(prev => prev.filter(task => task.id !== id));
-  }, [tasks, removeXP]);
+    
+    if (useFirestore && user?.uid) {
+      // Delete from Firestore
+      try {
+        await tasksAPI.deleteTask(id);
+        // Real-time listener will update state automatically
+      } catch (error) {
+        console.error('Error deleting task:', error);
+        // Fallback to local state
+        setTasks(prev => prev.filter(task => task.id !== id));
+      }
+    } else {
+      // Delete from localStorage
+      setTasks(prev => prev.filter(task => task.id !== id));
+    }
+  }, [tasks, removeXP, useFirestore, user]);
 
   const toggleTaskComplete = useCallback((id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -330,37 +433,97 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
   }, [tasks, removeXP]);
 
   // Member operations
-  const addMember = useCallback((memberData: Omit<Member, 'id' | 'xp' | 'level'>) => {
-    const newMember: Member = {
-      ...memberData,
-      id: generateId(),
-      xp: 0,
-      level: 1,
-    };
-    setMembers(prev => [...prev, newMember]);
-  }, [generateId]);
+  const addMember = useCallback(async (memberData: Omit<Member, 'id' | 'xp' | 'level'>) => {
+    if (useFirestore && user?.uid) {
+      // Save to Firestore
+      try {
+        await membersAPI.createMember(memberData, user.uid);
+        // Real-time listener will update state automatically
+      } catch (error) {
+        console.error('Error creating member:', error);
+        // Fallback to local state
+        const newMember: Member = {
+          ...memberData,
+          id: generateId(),
+          xp: 0,
+          level: 1,
+        };
+        setMembers(prev => [...prev, newMember]);
+      }
+    } else {
+      // Save to localStorage
+      const newMember: Member = {
+        ...memberData,
+        id: generateId(),
+        xp: 0,
+        level: 1,
+      };
+      setMembers(prev => [...prev, newMember]);
+    }
+  }, [generateId, useFirestore, user]);
 
-  const updateMember = useCallback((id: string, updates: Partial<Member>) => {
-    setMembers(prev => prev.map(member =>
-      member.id === id ? { ...member, ...updates } : member
-    ));
-  }, []);
+  const updateMember = useCallback(async (id: string, updates: Partial<Member>) => {
+    if (useFirestore && user?.uid) {
+      // Update in Firestore
+      try {
+        await membersAPI.updateMember(id, updates);
+        // Real-time listener will update state automatically
+      } catch (error) {
+        console.error('Error updating member:', error);
+        // Fallback to local state
+        setMembers(prev => prev.map(member =>
+          member.id === id ? { ...member, ...updates } : member
+        ));
+      }
+    } else {
+      // Update in localStorage
+      setMembers(prev => prev.map(member =>
+        member.id === id ? { ...member, ...updates } : member
+      ));
+    }
+  }, [useFirestore, user]);
 
-  const deleteMember = useCallback((id: string) => {
+  const deleteMember = useCallback(async (id: string) => {
     // Don't allow deleting if it's the only member
     if (members.length <= 1) return;
     
-    // Delete all tasks owned by this member
-    setTasks(prev => prev.filter(task => task.ownerId !== id));
-    
-    // If this was the selected member, select another one
-    if (selectedMemberId === id) {
-      const otherMember = members.find(m => m.id !== id);
-      setSelectedMemberId(otherMember?.id || null);
+    if (useFirestore && user?.uid) {
+      // Delete from Firestore
+      try {
+        // Delete all tasks owned by this member
+        const memberTasks = tasks.filter(task => task.ownerId === id);
+        for (const task of memberTasks) {
+          await tasksAPI.deleteTask(task.id);
+        }
+        
+        await membersAPI.deleteMember(id);
+        // Real-time listeners will update state automatically
+        
+        // If this was the selected member, select another one
+        if (selectedMemberId === id) {
+          const otherMember = members.find(m => m.id !== id);
+          setSelectedMemberId(otherMember?.id || null);
+        }
+      } catch (error) {
+        console.error('Error deleting member:', error);
+        // Fallback to local state
+        setTasks(prev => prev.filter(task => task.ownerId !== id));
+        if (selectedMemberId === id) {
+          const otherMember = members.find(m => m.id !== id);
+          setSelectedMemberId(otherMember?.id || null);
+        }
+        setMembers(prev => prev.filter(member => member.id !== id));
+      }
+    } else {
+      // Delete from localStorage
+      setTasks(prev => prev.filter(task => task.ownerId !== id));
+      if (selectedMemberId === id) {
+        const otherMember = members.find(m => m.id !== id);
+        setSelectedMemberId(otherMember?.id || null);
+      }
+      setMembers(prev => prev.filter(member => member.id !== id));
     }
-    
-    setMembers(prev => prev.filter(member => member.id !== id));
-  }, [members, selectedMemberId]);
+  }, [members, selectedMemberId, useFirestore, user, tasks]);
 
   const setSelectedMember = useCallback((memberId: string | null) => {
     setSelectedMemberId(memberId);

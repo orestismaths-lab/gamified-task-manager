@@ -7,6 +7,7 @@ import { X, Save, Calendar, Plus, Check, Trash2 } from 'lucide-react';
 import { Task, Priority, TaskStatus, Subtask } from '@/types';
 import { useTaskManager } from '@/context/TaskManagerContext';
 import { format } from 'date-fns';
+import { TaskAssignment } from './TaskAssignment';
 
 interface EditTaskModalProps {
   task: Task;
@@ -26,6 +27,7 @@ export function EditTaskModal({ task, isOpen, onClose }: EditTaskModalProps) {
   );
   const [editTags, setEditTags] = useState(task.tags.join(', '));
   const [editOwnerId, setEditOwnerId] = useState(task.ownerId);
+  const [editAssignedTo, setEditAssignedTo] = useState<string[]>(task.assignedTo || [task.ownerId].filter(Boolean));
   const [editSubtasks, setEditSubtasks] = useState<Subtask[]>(task.subtasks || []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
@@ -39,6 +41,7 @@ export function EditTaskModal({ task, isOpen, onClose }: EditTaskModalProps) {
       setEditDueDate(task.dueDate ? format(new Date(task.dueDate), 'yyyy-MM-dd') : '');
       setEditTags(task.tags.join(', '));
       setEditOwnerId(task.ownerId);
+      setEditAssignedTo(task.assignedTo || [task.ownerId].filter(Boolean));
       setEditSubtasks(task.subtasks || []);
       setNewSubtaskTitle('');
     }
@@ -68,30 +71,47 @@ export function EditTaskModal({ task, isOpen, onClose }: EditTaskModalProps) {
     setEditSubtasks(editSubtasks.filter(st => st.id !== subtaskId));
   }, [editSubtasks]);
 
-  const handleSave = useCallback((e: React.FormEvent) => {
+  const handleSave = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validation
+    const trimmedTitle = editTitle.trim();
+    if (!trimmedTitle || trimmedTitle.length === 0) {
+      alert('Please enter a task title');
+      return;
+    }
 
     const tagArray = editTags
       .split(',')
       .map(t => t.trim())
       .filter(t => t.length > 0);
 
+    // Sanitize title
+    const sanitizedTitle = trimmedTitle.replace(/[<>]/g, '');
+
     // Update the task with all changes including subtasks
     // The updateTask function handles everything in one operation
-    updateTask(task.id, {
-      title: editTitle.trim(),
-      description: editDescription || undefined, // Preserve whitespace and formatting (spaces, bullets, line breaks)
-      priority: editPriority,
-      status: editStatus,
-      dueDate: editDueDate ? new Date(editDueDate).toISOString() : task.dueDate,
-      tags: tagArray,
-      ownerId: editOwnerId,
-      completed: editStatus === 'completed',
-      subtasks: editSubtasks,
-    });
+    try {
+      await updateTask(task.id, {
+        title: sanitizedTitle,
+        description: editDescription || undefined, // Preserve whitespace and formatting (spaces, bullets, line breaks)
+        priority: editPriority,
+        status: editStatus,
+        dueDate: editDueDate ? new Date(editDueDate).toISOString() : task.dueDate,
+        tags: tagArray,
+        ownerId: editOwnerId,
+        assignedTo: editAssignedTo.length > 0 ? editAssignedTo : [editOwnerId].filter(Boolean),
+        completed: editStatus === 'completed',
+        subtasks: editSubtasks,
+      });
+    } catch (error) {
+      console.error('Error updating task:', error);
+      alert(error instanceof Error ? error.message : 'Failed to update task');
+      return;
+    }
 
     onClose();
-  }, [editTitle, editDescription, editPriority, editStatus, editDueDate, editTags, editOwnerId, editSubtasks, task.id, task.dueDate, updateTask, onClose]);
+  }, [editTitle, editDescription, editPriority, editStatus, editDueDate, editTags, editOwnerId, editAssignedTo, editSubtasks, task.id, task.dueDate, updateTask, onClose]);
 
   const handleClose = useCallback(() => {
     onClose();
@@ -198,18 +218,17 @@ export function EditTaskModal({ task, isOpen, onClose }: EditTaskModalProps) {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Owner</label>
-                    <select
-                      value={editOwnerId}
-                      onChange={(e) => setEditOwnerId(e.target.value)}
-                      className="w-full px-4 py-2 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 dark:focus:border-purple-500 focus:outline-none"
-                    >
-                      {members.map(member => (
-                        <option key={member.id} value={member.id}>
-                          {member.name}
-                        </option>
-                      ))}
-                    </select>
+                    <TaskAssignment
+                      members={members}
+                      assignedTo={editAssignedTo}
+                      onChange={(memberIds) => {
+                        setEditAssignedTo(memberIds);
+                        // Also update ownerId for backward compatibility
+                        if (memberIds.length > 0) {
+                          setEditOwnerId(memberIds[0]);
+                        }
+                      }}
+                    />
                   </div>
 
                   <div>

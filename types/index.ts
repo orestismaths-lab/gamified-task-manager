@@ -22,7 +22,7 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  ownerId: string;
+  ownerId: string; // Primary owner (legacy, kept for backward compatibility)
   priority: Priority;
   status: TaskStatus;
   dueDate: string; // ISO date string
@@ -39,6 +39,9 @@ export interface Task {
   timeEstimate?: number; // Estimated time in minutes
   timeEntries?: TimeEntry[]; // Individual time tracking entries
   comments?: TaskComment[]; // Comments/activity log
+  // Multi-user support
+  assignedTo?: string[]; // Array of member IDs assigned to this task
+  createdBy?: string; // User ID who created this task (Firebase Auth UID)
 }
 
 export interface TimeEntry {
@@ -63,6 +66,8 @@ export interface Member {
   xp: number;
   level: number;
   avatar?: string; // Optional avatar URL or emoji
+  userId?: string; // Firebase Auth UID (for multi-user)
+  email?: string; // User email (for multi-user)
 }
 
 export interface TaskManagerState {

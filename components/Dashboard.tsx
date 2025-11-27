@@ -20,10 +20,14 @@ import { ExportOptions } from './ExportOptions';
 import { Priority, TaskStatus } from '@/types';
 import { triggerConfetti } from '@/lib/confetti';
 import { setupNotificationCheck } from '@/lib/notifications';
+import { useAuth } from '@/context/AuthContext';
+import { AuthModal } from './AuthModal';
 
 type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export';
 
 export function Dashboard() {
+  const { user, loading: authLoading } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeView, setActiveView] = useState<ViewType>('tasks');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
   const {
@@ -37,6 +41,13 @@ export function Dashboard() {
     setSearchQuery,
     activeFilters,
   } = useTaskManager();
+
+  // Show auth modal if not logged in
+  useEffect(() => {
+    if (!authLoading && !user) {
+      setShowAuthModal(true);
+    }
+  }, [user, authLoading]);
 
   const [showFilters, setShowFilters] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -81,10 +92,30 @@ export function Dashboard() {
     return cleanup;
   }, [tasks]);
 
+  // Show loading or auth modal
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
-      {/* Burger Menu */}
-      <SidebarMenu activeView={activeView} onViewChange={setActiveView} />
+    <>
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => {
+          if (user) setShowAuthModal(false);
+        }}
+        onSuccess={() => setShowAuthModal(false)}
+      />
+      <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
+        {/* Burger Menu */}
+        <SidebarMenu activeView={activeView} onViewChange={setActiveView} />
 
       {/* Main Content */}
       <div className="flex-1 overflow-x-hidden bg-gray-50 dark:bg-gray-900">
@@ -321,6 +352,7 @@ export function Dashboard() {
         )}
       </div>
     </div>
+    </>
   );
 }
 

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { TaskManagerProvider } from "@/context/TaskManagerContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { AuthProvider } from "@/context/AuthContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,9 +21,11 @@ export default function RootLayout({
     <html lang="en-GB">
       <body className={inter.className}>
         <ThemeProvider>
-          <TaskManagerProvider>
-            {children}
-          </TaskManagerProvider>
+          <AuthProvider>
+            <TaskManagerProvider>
+              {children}
+            </TaskManagerProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
