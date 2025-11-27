@@ -105,7 +105,7 @@ export function Achievements() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                 <Award className="w-6 h-6 text-purple-600" />
-                {selectedMember.name}'s Achievements
+                {selectedMember.name}&apos;s Achievements
               </h2>
               <div className="text-right">
                 <div className="text-3xl font-bold text-purple-600">

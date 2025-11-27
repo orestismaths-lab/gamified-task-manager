@@ -419,7 +419,7 @@ export function TaskInput() {
                       onChange={(e) => setRecurrenceType(e.target.value as RecurrenceType)}
                       className="w-full px-4 py-2 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 dark:focus:border-purple-500 focus:outline-none transition-colors"
                     >
-                      <option value="none">Don't repeat</option>
+                      <option value="none">Don&apos;t repeat</option>
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
                       <option value="monthly">Monthly</option>
