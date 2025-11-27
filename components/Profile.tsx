@@ -20,8 +20,9 @@ export function Profile() {
   const inProgressTasks = userTasks.filter(task => task.status === 'in-progress');
   
   // Calculate XP needed for next level
-  const xpForNextLevel = member ? (member.level * 100) - member.xp : 0;
-  const xpProgress = member ? (member.xp % 100) / 100 : 0;
+  // XP needed for next level = (currentLevel + 1) * 100 - currentXP
+  const xpForNextLevel = member ? Math.max(0, ((member.level + 1) * 100) - member.xp) : 0;
+  const xpProgress = member ? Math.min(1, (member.xp % 100) / 100) : 0;
 
   const handleSignOut = async () => {
     try {
