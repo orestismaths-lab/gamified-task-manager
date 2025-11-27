@@ -26,6 +26,9 @@ jobs:
         with:
           node-version: '18'
       
+      - name: Ensure node_modules directory exists
+        run: mkdir -p task_manager/node_modules
+      
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
