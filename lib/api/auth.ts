@@ -49,8 +49,23 @@ export const authAPI = {
 
   // Sign in with Google
   signInWithGoogle: async (): Promise<User> => {
-    const userCredential = await signInWithPopup(auth, googleProvider);
-    return userCredential.user;
+    try {
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      return userCredential.user;
+    } catch (error: any) {
+      // Provide more helpful error messages
+      if (error.code === 'auth/popup-closed-by-user') {
+        throw new Error('Sign-in was cancelled. Please try again.');
+      } else if (error.code === 'auth/popup-blocked') {
+        throw new Error('Popup was blocked. Please allow popups for this site and try again.');
+      } else if (error.code === 'auth/unauthorized-domain') {
+        throw new Error('This domain is not authorized. Please contact support.');
+      } else if (error.code === 'auth/operation-not-allowed') {
+        throw new Error('Google sign-in is not enabled. Please enable it in Firebase Console.');
+      } else {
+        throw new Error(error.message || 'Google sign-in failed. Please try again.');
+      }
+    }
   },
 
   // Sign out
