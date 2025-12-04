@@ -318,14 +318,6 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
           : task
       ));
     }
-    } else {
-      // Update in localStorage (use member IDs)
-      setTasks(prev => prev.map(task => 
-        task.id === id 
-          ? { ...task, ...updates, updatedAt: new Date().toISOString() }
-          : task
-      ));
-    }
   }, [user, members]);
 
   const deleteTask = useCallback(async (id: string) => {
