@@ -30,9 +30,6 @@ export async function GET(
 
     const memberUser = await prisma.user.findUnique({
       where: { id: params.id },
-      include: {
-        memberProfile: true,
-      },
       select: {
         id: true,
         email: true,
