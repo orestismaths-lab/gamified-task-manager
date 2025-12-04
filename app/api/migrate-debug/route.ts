@@ -17,28 +17,8 @@ export async function POST() {
       );
     }
 
-    // Generate Prisma Client
-    console.log('📦 Generating Prisma Client...');
-    try {
-      const generateOutput = execSync('npx prisma generate', { 
-        encoding: 'utf-8',
-        env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || '' }
-      });
-      console.log('Prisma generate output:', generateOutput);
-    } catch (error: any) {
-      console.error('❌ Prisma generate failed:', error.message);
-      const errorOutput = error.stdout || error.stderr || error.message;
-      console.error('Full error:', errorOutput);
-      return NextResponse.json(
-        { 
-          error: 'Prisma generate failed',
-          details: error.message,
-          output: errorOutput,
-          stack: error.stack
-        },
-        { status: 500 }
-      );
-    }
+    // Skip Prisma generate - it's already done during build
+    console.log('📦 Skipping Prisma generate (already done in build)...');
 
     // Check for failed migrations first
     console.log('🔍 Checking for failed migrations...');
