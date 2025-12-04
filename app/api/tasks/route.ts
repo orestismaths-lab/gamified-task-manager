@@ -20,11 +20,21 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: Task[
   try {
     logError('Tasks API - GET', { message: 'Starting fetch' });
     
+    // Validate Prisma client
+    if (!prisma) {
+      throw new Error('Prisma client not initialized');
+    }
+
     const user = await getSessionUser(req);
     
     if (!user) {
       logError('Tasks API - GET', { message: 'Unauthorized - no user in session' });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!user.id || !user.email) {
+      logError('Tasks API - GET', { message: 'Invalid user object', user });
+      return NextResponse.json({ error: 'Invalid user session' }, { status: 401 });
     }
 
     logError('Tasks API - GET', { message: `User: ${user.email} (${user.id})` });
@@ -72,34 +82,47 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: Task[
     logError('Tasks API - GET', { message: `Fetched ${tasks.length} tasks from database` });
 
     // Transform to frontend format
-    const transformedTasks: Task[] = tasks.map((task) => ({
-      id: task.id,
-      title: task.title,
-      description: task.description || undefined,
-      ownerId: task.createdById, // Legacy field
-      priority: task.priority as Priority,
-      status: task.status as TaskStatus,
-      dueDate: task.dueDate ? task.dueDate.toISOString() : new Date().toISOString(),
-      tags: (() => {
-        try {
-          return task.tags ? JSON.parse(task.tags) : [];
-        } catch {
-          return [];
+    const transformedTasks: Task[] = tasks.map((task) => {
+      try {
+        // Validate required fields
+        if (!task.id || !task.title) {
+          logError('Tasks API - GET', { message: `Skipping task with missing id or title`, taskId: task.id });
+          return null;
         }
-      })(),
-      subtasks: (task.subtasks || []).map((st) => ({
-        id: st.id,
-        title: st.title || '',
-        completed: st.completed || false,
-        createdAt: st.createdAt.toISOString(),
-        updatedAt: st.updatedAt.toISOString(),
-      })),
-      completed: task.completed || false,
-      createdAt: task.createdAt.toISOString(),
-      updatedAt: task.updatedAt.toISOString(),
-      assignedTo: (task.assignments || []).map((a) => a.userId).filter((id): id is string => !!id),
-      createdBy: task.createdById,
-    }));
+
+        return {
+          id: task.id,
+          title: task.title,
+          description: task.description || undefined,
+          ownerId: task.createdById, // Legacy field
+          priority: (task.priority as Priority) || 'medium',
+          status: (task.status as TaskStatus) || 'todo',
+          dueDate: task.dueDate ? task.dueDate.toISOString() : new Date().toISOString(),
+          tags: (() => {
+            try {
+              return task.tags ? JSON.parse(task.tags) : [];
+            } catch {
+              return [];
+            }
+          })(),
+          subtasks: (task.subtasks || []).map((st) => ({
+            id: st.id,
+            title: st.title || '',
+            completed: st.completed || false,
+            createdAt: st.createdAt.toISOString(),
+            updatedAt: st.updatedAt.toISOString(),
+          })),
+          completed: task.completed || false,
+          createdAt: task.createdAt.toISOString(),
+          updatedAt: task.updatedAt.toISOString(),
+          assignedTo: (task.assignments || []).map((a) => a.userId).filter((id): id is string => !!id),
+          createdBy: task.createdById,
+        };
+      } catch (mapError) {
+        logError('Tasks API - GET', mapError, { taskId: task.id, taskTitle: task.title });
+        return null;
+      }
+    }).filter((task): task is Task => task !== null);
 
     logError('Tasks API - GET', { message: `Returning ${transformedTasks.length} transformed tasks` });
     return NextResponse.json({ tasks: transformedTasks });
