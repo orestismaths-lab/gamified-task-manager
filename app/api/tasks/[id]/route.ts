@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { handleDatabaseError, handleValidationError, logError } from '@/lib/utils/errors';
 import { getSessionUser } from '@/lib/utils/session';
 import type { UserPublic } from '@/lib/types/auth';
+import type { Task } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
