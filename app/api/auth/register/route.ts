@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 const SESSION_COOKIE_NAME = 'task_manager_session';
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -17,10 +19,39 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
+    // Test Prisma connection first
+    try {
+      await prisma.$connect();
+    } catch (connectError: any) {
+      console.error('Prisma connection error:', connectError);
+      return NextResponse.json(
+        { 
+          error: 'Database connection failed',
+          details: process.env.NODE_ENV === 'development' ? connectError?.message : undefined
+        },
+        { status: 500 }
+      );
+    }
+
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    let existingUser;
+    try {
+      existingUser = await prisma.user.findUnique({
+        where: { email },
+      });
+    } catch (dbError: any) {
+      console.error('Database error in register (check existing):', dbError);
+      const errorMessage = dbError?.message || 'Unknown database error';
+      const errorStack = dbError?.stack || '';
+      console.error('Full error:', { errorMessage, errorStack, error: dbError });
+      return NextResponse.json(
+        { 
+          error: `Database error: ${errorMessage}`,
+          details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+        },
+        { status: 500 }
+      );
+    }
 
     if (existingUser) {
       return NextResponse.json({ error: 'User with this email already exists' }, { status: 409 });
@@ -30,13 +61,37 @@ export async function POST(req: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashedPassword,
-        name: name || email.split('@')[0],
-      },
-    });
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          email,
+          password: hashedPassword,
+          name: name || email.split('@')[0],
+        },
+      });
+    } catch (dbError: any) {
+      console.error('Database error in register (create user):', dbError);
+      const errorMessage = dbError?.message || 'Unknown database error';
+      const errorStack = dbError?.stack || '';
+      console.error('Full error:', { errorMessage, errorStack, error: dbError });
+      
+      // Check if it's a unique constraint violation
+      if (errorMessage.includes('Unique constraint') || errorMessage.includes('UNIQUE constraint')) {
+        return NextResponse.json(
+          { error: 'User with this email already exists' },
+          { status: 409 }
+        );
+      }
+      
+      return NextResponse.json(
+        { 
+          error: `Database error: ${errorMessage}`,
+          details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+        },
+        { status: 500 }
+      );
+    }
 
     // Create session token
     const sessionToken = crypto.randomUUID();
@@ -65,10 +120,17 @@ export async function POST(req: NextRequest) {
     console.error('Register error:', err);
     const errorMessage = err?.message || 'Unknown error';
     const errorStack = err?.stack || '';
-    console.error('Error details:', { errorMessage, errorStack });
+    console.error('Error details:', { errorMessage, errorStack, error: err });
+    
+    // Provide more helpful error message in production
+    let userFriendlyError = 'Failed to register user';
+    if (errorMessage.includes('SQLite') || errorMessage.includes('database') || errorMessage.includes('ENOENT')) {
+      userFriendlyError = 'Database connection error. Please try again later.';
+    }
+    
     return NextResponse.json(
       { 
-        error: 'Failed to register user',
+        error: userFriendlyError,
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
       },
       { status: 500 }
