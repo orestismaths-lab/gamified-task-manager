@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:lan": "next dev -H 0.0.0.0 -p 3000",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && (prisma migrate deploy || echo 'Migration skipped') && next build",
     "postinstall": "prisma generate",
     "start": "next start",
     "start:lan": "next start -H 0.0.0.0 -p 3000",

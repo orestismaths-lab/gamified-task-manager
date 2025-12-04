@@ -20,10 +20,23 @@ export async function POST(req: NextRequest) {
 
     // Test Prisma connection first
     try {
-      await prisma.$connect();
+      // Try to connect, but don't fail if already connected
+      try {
+        await prisma.$connect();
+      } catch (e: any) {
+        // If already connected, ignore the error
+        if (!e.message?.includes('already connected')) {
+          throw e;
+        }
+      }
     } catch (connectError: any) {
       console.error('Prisma connection error:', connectError);
       const errorMsg = connectError?.message || 'Unknown connection error';
+      console.error('Full connection error:', {
+        message: errorMsg,
+        code: connectError?.code,
+        stack: connectError?.stack,
+      });
       // Include error message in production for debugging
       return NextResponse.json(
         { 
