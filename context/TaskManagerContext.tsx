@@ -428,24 +428,14 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
   // Member operations
   const addMember = useCallback(async (memberData: Omit<Member, 'id' | 'xp' | 'level'>) => {
-    if (user?.id) {
-      // Save to backend API
-      try {
-        await membersAPI.createMember(memberData, user.id);
-        // Real-time listener will update state automatically
-      } catch (error) {
-        console.error('Error creating member:', error);
-        // Fallback to local state
-        const newMember: Member = {
-          ...memberData,
-          id: generateId(),
-          xp: 0,
-          level: 1,
-        };
-        setMembers(prev => [...prev, newMember]);
-      }
-    } else {
-      // Save to localStorage
+    // Create member without userId (allows admin to create members for future users)
+    // userId will be linked when user signs up and selects this member
+    try {
+      await membersAPI.createMember(memberData); // No userId - optional parameter
+      // Real-time listener will update state automatically
+    } catch (error) {
+      console.error('Error creating member:', error);
+      // Fallback to local state
       const newMember: Member = {
         ...memberData,
         id: generateId(),
@@ -454,7 +444,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       };
       setMembers(prev => [...prev, newMember]);
     }
-  }, [generateId, user]);
+  }, [generateId]);
 
   const updateMember = useCallback(async (id: string, updates: Partial<Member>) => {
     if (user?.id) {

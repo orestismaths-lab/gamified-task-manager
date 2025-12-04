@@ -5,7 +5,7 @@ import { storage } from '@/lib/storage';
 import { API_ENDPOINTS } from '@/lib/constants';
 
 export const membersAPI = {
-  // Get all members from backend API (all registered users)
+  // Get all members: users from API + members from localStorage (without userId)
   getMembers: async (): Promise<Member[]> => {
     try {
       const res = await fetch(API_ENDPOINTS.MEMBERS);
@@ -14,7 +14,17 @@ export const membersAPI = {
         return storage.getMembers();
       }
       const data = (await res.json()) as { members: Member[] };
-      return data.members;
+      const apiMembers = data.members;
+      
+      // Get members from localStorage (may include members without userId)
+      const localMembers = storage.getMembers();
+      
+      // Merge: API members (users with userId) + local members without userId
+      const apiMemberIds = new Set(apiMembers.map(m => m.id));
+      const membersWithoutUserId = localMembers.filter(m => !m.userId || !apiMemberIds.has(m.id));
+      
+      // Combine: API members + local members that don't have userId or aren't in API
+      return [...apiMembers, ...membersWithoutUserId];
     } catch (error) {
       console.error('Error fetching members from API:', error);
       // Fallback to localStorage for offline support
@@ -34,13 +44,10 @@ export const membersAPI = {
     return members.find(m => m.userId === userId) || null;
   },
 
-  // Create member
-  createMember: async (member: Omit<Member, 'id' | 'xp' | 'level'>, userId: string): Promise<string> => {
+  // Create member (userId is optional - allows creating members without user accounts)
+  createMember: async (member: Omit<Member, 'id' | 'xp' | 'level'>, userId?: string): Promise<string> => {
     if (!member.name || member.name.trim().length === 0) {
       throw new Error('Member name is required');
-    }
-    if (!userId || userId.trim().length === 0) {
-      throw new Error('User ID is required');
     }
     
     const members = storage.getMembers();
@@ -48,7 +55,7 @@ export const membersAPI = {
       ...member,
       id: `member-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: member.name.trim(),
-      userId,
+      userId: userId || undefined, // Optional - allows members without user accounts
       xp: 0,
       level: 1,
     };

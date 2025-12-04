@@ -12,10 +12,13 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/members
- * Returns a list of all users formatted as members for task assignment
+ * Returns a list of all members for task assignment:
+ * - Users from database (with userId)
+ * - Members from localStorage (may not have userId - created by admin before user signup)
  */
 export async function GET(): Promise<NextResponse<{ members: Member[] } | { error: string; details?: string }>> {
   try {
+    // Get users from database
     const users = await prisma.user.findMany({
       orderBy: { createdAt: 'asc' },
       select: {
@@ -28,7 +31,7 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
     });
 
     // Convert users to members format
-    const members: Member[] = users.map((user) => ({
+    const userMembers: Member[] = users.map((user) => ({
       id: user.id,
       name: user.name || user.email.split('@')[0] || 'User',
       email: user.email,
@@ -38,7 +41,10 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
       level: 1, // Default level
     }));
 
-    return NextResponse.json({ members });
+    // Note: Members without userId are stored in localStorage and loaded client-side
+    // This endpoint returns only users (with userId). 
+    // Client-side code will merge with localStorage members.
+    return NextResponse.json({ members: userMembers });
   } catch (error) {
     logError('Members API - GET', error);
     return handleDatabaseError(error, 'Failed to fetch members');
