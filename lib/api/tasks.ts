@@ -119,26 +119,36 @@ export const tasksAPI = {
     }
   },
 
-  // Real-time listener (simplified - just return current tasks)
+  // Real-time listener (fetches from API)
   subscribeToTasks: (
     callback: (tasks: Task[]) => void,
     filter?: { assignedTo?: string }
   ): (() => void) => {
-    // Call immediately with current tasks
-    let tasks = storage.getTasks();
-    if (filter?.assignedTo) {
-      tasks = tasks.filter(t => t.assignedTo?.includes(filter.assignedTo!));
-    }
-    callback(tasks);
-    
-    // Poll every 2 seconds for changes (simplified real-time)
-    const interval = setInterval(() => {
-      let currentTasks = storage.getTasks();
-      if (filter?.assignedTo) {
-        currentTasks = currentTasks.filter(t => t.assignedTo?.includes(filter.assignedTo!));
+    const fetchAndCallback = async () => {
+      try {
+        const res = await fetch(API_ENDPOINTS.TASKS || '/api/tasks');
+        if (!res.ok) {
+          throw new Error('Failed to fetch tasks');
+        }
+        const data = (await res.json()) as { tasks: Task[] };
+        // Backend already filters by user.id, so we get all tasks for the logged-in user
+        callback(data.tasks);
+      } catch (error) {
+        console.error('Error fetching tasks:', error);
+        // Fallback to localStorage
+        let tasks = storage.getTasks();
+        if (filter?.assignedTo) {
+          tasks = tasks.filter(t => t.assignedTo?.includes(filter.assignedTo!));
+        }
+        callback(tasks);
       }
-      callback(currentTasks);
-    }, 2000);
+    };
+    
+    // Call immediately
+    fetchAndCallback();
+    
+    // Poll every 2 seconds for changes
+    const interval = setInterval(fetchAndCallback, 2000);
     
     return () => clearInterval(interval);
   },
