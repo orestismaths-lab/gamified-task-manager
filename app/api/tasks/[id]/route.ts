@@ -235,10 +235,10 @@ export async function PUT(
       });
       // Create new subtasks
       await prisma.subtask.createMany({
-        data: (updates.subtasks as any[]).map((st) => ({
+        data: (updates.subtasks as Array<{ title?: unknown; completed?: unknown }>).map((st) => ({
           taskId: params.id,
-          title: st.title || '',
-          completed: st.completed || false,
+          title: typeof st.title === 'string' ? st.title : '',
+          completed: typeof st.completed === 'boolean' ? st.completed : false,
         })),
       });
     }

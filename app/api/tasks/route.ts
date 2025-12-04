@@ -100,7 +100,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: any[]
  */
 export async function POST(req: NextRequest): Promise<NextResponse<{ task: any } | { error: string; details?: string }>> {
   try {
-    const user = await getSessionUser();
+    const user = await getSessionUser(req);
     
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -141,9 +141,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: any }
         createdById: user.id,
         subtasks: {
           create: Array.isArray(taskData.subtasks)
-            ? taskData.subtasks.map((st: any) => ({
-                title: st.title || '',
-                completed: st.completed || false,
+            ? taskData.subtasks.map((st: { title?: unknown; completed?: unknown }) => ({
+                title: typeof st.title === 'string' ? st.title : '',
+                completed: typeof st.completed === 'boolean' ? st.completed : false,
               }))
             : [],
         },
