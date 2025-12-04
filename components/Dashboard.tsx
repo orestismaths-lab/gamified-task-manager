@@ -351,9 +351,12 @@ export function Dashboard() {
           <ExportOptions />
         ) : activeView === 'profile' ? (
           <Profile />
-        ) : (
-          <DataManagement />
-        )}
+        ) : activeView === 'data' ? (
+          <div className="space-y-8">
+            <DataMigration />
+            <DataManagement />
+          </div>
+        ) : null}
       </div>
     </div>
     </>
