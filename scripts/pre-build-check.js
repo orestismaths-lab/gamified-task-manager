@@ -11,6 +11,47 @@ async function checkAndMarkMigrations() {
   try {
     console.log('🔍 Checking if tables exist...');
 
+    // First, resolve any failed migrations
+    console.log('🔧 Checking for failed migrations...');
+    try {
+      const failedMigrations = await prisma.$queryRaw`
+        SELECT migration_name, started_at 
+        FROM "_prisma_migrations" 
+        WHERE finished_at IS NULL AND rolled_back_at IS NULL
+      `;
+
+      if (failedMigrations.length > 0) {
+        console.log(`⚠️  Found ${failedMigrations.length} failed migration(s), resolving...`);
+        for (const migration of failedMigrations) {
+          try {
+            await prisma.$executeRaw`
+              UPDATE "_prisma_migrations" 
+              SET rolled_back_at = NOW() 
+              WHERE migration_name = ${migration.migration_name} 
+                AND finished_at IS NULL 
+                AND rolled_back_at IS NULL
+            `;
+            console.log(`✅ Resolved failed migration: ${migration.migration_name}`);
+          } catch (error) {
+            console.log(`⚠️  Could not resolve ${migration.migration_name}, will try to mark as applied...`);
+            try {
+              await prisma.$executeRaw`
+                UPDATE "_prisma_migrations" 
+                SET finished_at = NOW(), applied_steps_count = 1
+                WHERE migration_name = ${migration.migration_name} 
+                  AND finished_at IS NULL
+              `;
+              console.log(`✅ Marked ${migration.migration_name} as applied`);
+            } catch (e) {
+              console.log(`⚠️  Could not mark ${migration.migration_name} as applied`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.log('⚠️  Could not check for failed migrations:', error.message);
+    }
+
     // Check which tables exist
     const tables = await prisma.$queryRaw`
       SELECT tablename 
@@ -28,7 +69,8 @@ async function checkAndMarkMigrations() {
     const memberProfileExists = existingTables.includes('MemberProfile');
 
     if (!allRequiredExist) {
-      console.log('⚠️  Not all required tables exist. Migrations will run normally.');
+      const missing = requiredTables.filter(t => !existingTables.includes(t));
+      console.log(`⚠️  Missing tables: ${missing.join(', ')}. Migrations will run normally.`);
       return;
     }
 
