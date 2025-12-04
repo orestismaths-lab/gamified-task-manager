@@ -35,11 +35,32 @@
 prisma generate && prisma migrate deploy && next build
 ```
 
-Αν χρειαστεί να τρέξεις migrations manually:
+**⚠️ ΣΗΜΑΝΤΙΚΟ:** Αν βλέπεις error "table does not exist", το migration δεν έχει τρέξει. Κάνε:
+
+#### Option A: Manual Migration via Vercel CLI
 ```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Login
+vercel login
+
+# Link project
 cd task_manager
+vercel link
+
+# Run migration
 npx prisma migrate deploy
 ```
+
+#### Option B: Vercel Dashboard → Functions → Run Migration
+1. Vercel Dashboard → Project → **Settings** → **Functions**
+2. Δημιούργησε temporary function για migration
+3. Ή χρησιμοποίησε **Vercel CLI** (Option A)
+
+#### Option C: Force Redeploy
+1. Vercel Dashboard → **Deployments** → Latest
+2. Κάνε **Redeploy** (θα τρέξει migrations ξανά)
 
 ### 3. Verify Setup
 
