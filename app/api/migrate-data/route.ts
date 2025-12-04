@@ -125,7 +125,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
               subtasks: {
                 create: Array.isArray(task.subtasks)
                   ? task.subtasks
-                      .filter((st): st is { title?: unknown; completed?: unknown } => 
+                      .filter((st: unknown): st is { title?: unknown; completed?: unknown } => 
                         st !== null && typeof st === 'object'
                       )
                       .map((st) => ({
