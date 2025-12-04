@@ -84,6 +84,21 @@ export const storage = {
     }
   },
 
+  clearTasks: (): void => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.TASKS);
+  },
+
+  clearMembers: (): void => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.MEMBERS);
+  },
+
+  clearSelectedMemberId: (): void => {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEYS.SELECTED_MEMBER);
+  },
+
   // Clear all data (for testing/reset)
   clearAll: (): void => {
     if (typeof window === 'undefined') return;
