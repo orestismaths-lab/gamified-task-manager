@@ -15,7 +15,7 @@ import type { Task, Member } from '@/types';
 export function DataMigration() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; message: string; imported?: { tasks: number; members: number } } | null>(null);
+  const [result, setResult] = useState<{ success: boolean; message: string; imported?: { tasks: number; members: number }; warnings?: string[] } | null>(null);
   const [localData, setLocalData] = useState<{ tasks: Task[]; members: Member[] } | null>(null);
   const [uploadedData, setUploadedData] = useState<{ tasks: Task[]; members: Member[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -110,6 +110,16 @@ export function DataMigration() {
         return;
       }
 
+      // Log data being sent
+      console.log('[DataMigration] Sending migration request', {
+        tasksCount: tasks.length,
+        membersCount: members.length,
+        userEmail: user?.email,
+        userId: user?.id,
+        sampleTask: tasks[0],
+        sampleMember: members[0],
+      });
+
       // Send to migration endpoint
       const res = await fetch('/api/migrate-data', {
         method: 'POST',
@@ -120,14 +130,17 @@ export function DataMigration() {
 
       const data = await res.json();
 
+      console.log('[DataMigration] Migration response', { status: res.status, data });
+
       if (!res.ok) {
-        throw new Error(data.error || 'Migration failed');
+        throw new Error(data.error || data.details || 'Migration failed');
       }
 
       setResult({
         success: true,
         message: data.message || 'Migration completed successfully',
         imported: data.imported,
+        warnings: data.warnings,
       });
 
       // Clear localStorage after successful migration (only if migrating from localStorage)
@@ -276,15 +289,34 @@ export function DataMigration() {
               </p>
             </div>
             {result.success && result.imported && (
-              <div className="mt-3 text-sm text-green-700 dark:text-green-400">
-                <p>✅ Imported {result.imported.tasks} tasks</p>
-                <p>✅ Imported {result.imported.members} member profiles</p>
-                {result.imported.tasks > 0 || result.imported.members > 0 ? (
-                  <p className="mt-2 font-semibold">
-                    LocalStorage has been cleared. Your data is now in the database!
-                  </p>
-                ) : null}
-              </div>
+                  <div className="mt-3 text-sm text-green-700 dark:text-green-400">
+                    <p>✅ Imported {result.imported.tasks} tasks</p>
+                    <p>✅ Imported {result.imported.members} member profiles</p>
+                    {result.imported.tasks > 0 || result.imported.members > 0 ? (
+                      <p className="mt-2 font-semibold">
+                        LocalStorage has been cleared. Your data is now in the database!
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-yellow-700 dark:text-yellow-400">
+                        ⚠️ No data was imported. This might mean:
+                        <ul className="list-disc list-inside mt-1 ml-2">
+                          <li>Tasks already exist in the database (duplicates were skipped)</li>
+                          <li>No matching member found for your user account</li>
+                          <li>Check the browser console for detailed error messages</li>
+                        </ul>
+                      </p>
+                    )}
+                    {'warnings' in result && result.warnings && Array.isArray(result.warnings) && result.warnings.length > 0 && (
+                      <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                        <p className="font-semibold text-yellow-800 dark:text-yellow-300">Warnings:</p>
+                        <ul className="list-disc list-inside mt-1 text-yellow-700 dark:text-yellow-400">
+                          {result.warnings.map((warning: string, idx: number) => (
+                            <li key={idx}>{warning}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
             )}
           </motion.div>
         )}
