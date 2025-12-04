@@ -311,6 +311,14 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         throw error;
       }
     } else {
+      // Update in localStorage (only when NOT logged in)
+      setTasks(prev => prev.map(task => 
+        task.id === id 
+          ? { ...task, ...updates, updatedAt: new Date().toISOString() }
+          : task
+      ));
+    }
+    } else {
       // Update in localStorage (use member IDs)
       setTasks(prev => prev.map(task => 
         task.id === id 
