@@ -248,16 +248,38 @@ export async function PUT(
     });
 
     // Update assignments if provided
-    if (updates.assignedTo && Array.isArray(updates.assignedTo)) {
+    if (updates.assignedTo !== undefined && Array.isArray(updates.assignedTo)) {
+      // Validate user IDs
+      const validUserIds = updates.assignedTo.filter((id): id is string => typeof id === 'string');
+      
+      // Verify all assigned users exist
+      if (validUserIds.length > 0) {
+        const existingUsers = await prisma.user.findMany({
+          where: { id: { in: validUserIds } },
+          select: { id: true },
+        });
+        const existingUserIds = new Set(existingUsers.map(u => u.id));
+        const invalidUserIds = validUserIds.filter(id => !existingUserIds.has(id));
+        
+        if (invalidUserIds.length > 0) {
+          return handleValidationError([`Invalid user IDs: ${invalidUserIds.join(', ')}`]);
+        }
+      }
+      
+      // Delete existing assignments
       await prisma.taskAssignment.deleteMany({
         where: { taskId: params.id },
       });
-      await prisma.taskAssignment.createMany({
-        data: (updates.assignedTo as string[]).map((userId) => ({
-          taskId: params.id,
-          userId,
-        })),
-      });
+      
+      // Create new assignments
+      if (validUserIds.length > 0) {
+        await prisma.taskAssignment.createMany({
+          data: validUserIds.map((userId) => ({
+            taskId: params.id,
+            userId,
+          })),
+        });
+      }
     }
 
     // Update subtasks if provided
