@@ -71,12 +71,12 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
   // Load data from API or localStorage
   useEffect(() => {
     if (user?.id) {
-      // User is logged in - use API for members (all registered users)
+      // User is logged in - use API for tasks
+      // Backend already filters by user.id, so we get all tasks for this user
       const unsubscribeTasks = tasksAPI.subscribeToTasks(
         (apiTasks) => {
           setTasks(apiTasks);
-        },
-        authMember?.id ? { assignedTo: authMember.id } : undefined
+        }
       );
 
       // Load members from API (all registered users for assignment)
@@ -191,10 +191,30 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
   // Task operations
   const addTask = useCallback(async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date().toISOString();
+    
+    // Convert member IDs to user IDs for backend assignment
+    let assignedToUserIds: string[] = [];
+    if (taskData.assignedTo && taskData.assignedTo.length > 0) {
+      assignedToUserIds = taskData.assignedTo
+        .map(memberId => {
+          const member = members.find(m => m.id === memberId);
+          return member?.userId; // Get userId from member
+        })
+        .filter((userId): userId is string => !!userId); // Filter out undefined
+      
+      // If no valid user IDs found, fall back to current user
+      if (assignedToUserIds.length === 0 && user?.id) {
+        assignedToUserIds = [user.id];
+      }
+    } else if (user?.id) {
+      // Default: assign to current user
+      assignedToUserIds = [user.id];
+    }
+    
     const newTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
       ...taskData,
       status: taskData.status || (taskData.completed ? 'completed' : 'todo'),
-      assignedTo: taskData.assignedTo || [taskData.ownerId].filter(Boolean),
+      assignedTo: assignedToUserIds, // Use user IDs for backend
       createdBy: user?.id || undefined,
     };
 
@@ -205,9 +225,9 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         // Real-time listener will update state automatically
       } catch (error) {
         console.error('Error creating task:', error);
-        // Fallback to local state
+        // Fallback to local state (use original member IDs for localStorage)
         const newTask: Task = {
-          ...newTaskData,
+          ...taskData, // Keep original member IDs for localStorage
           id: generateId(),
           createdAt: now,
           updatedAt: now,
@@ -215,26 +235,42 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         setTasks(prev => [...prev, newTask]);
       }
     } else {
-      // Save to localStorage
+      // Save to localStorage (use member IDs)
       const newTask: Task = {
-        ...newTaskData,
+        ...taskData,
         id: generateId(),
         createdAt: now,
         updatedAt: now,
       };
       setTasks(prev => [...prev, newTask]);
     }
-  }, [generateId, user]);
+  }, [generateId, user, members]);
 
   const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
+    // Convert member IDs to user IDs for backend assignment if assignedTo is being updated
+    let processedUpdates = { ...updates };
+    if (updates.assignedTo && updates.assignedTo.length > 0 && user?.id) {
+      const assignedToUserIds = updates.assignedTo
+        .map(memberId => {
+          const member = members.find(m => m.id === memberId);
+          return member?.userId; // Get userId from member
+        })
+        .filter((userId): userId is string => !!userId); // Filter out undefined
+      
+      // If no valid user IDs found, keep original assignedTo
+      if (assignedToUserIds.length > 0) {
+        processedUpdates.assignedTo = assignedToUserIds;
+      }
+    }
+    
     if (user?.id) {
       // Update in backend API
       try {
-        await tasksAPI.updateTask(id, updates);
+        await tasksAPI.updateTask(id, processedUpdates);
         // Real-time listener will update state automatically
       } catch (error) {
         console.error('Error updating task:', error);
-        // Fallback to local state
+        // Fallback to local state (use original member IDs)
         setTasks(prev => prev.map(task => 
           task.id === id 
             ? { ...task, ...updates, updatedAt: new Date().toISOString() }
@@ -242,14 +278,14 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         ));
       }
     } else {
-      // Update in localStorage
+      // Update in localStorage (use member IDs)
       setTasks(prev => prev.map(task => 
         task.id === id 
           ? { ...task, ...updates, updatedAt: new Date().toISOString() }
           : task
       ));
     }
-  }, [user]);
+  }, [user, members]);
 
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find(t => t.id === id);
