@@ -27,20 +27,21 @@ export function createErrorResponse(
 /**
  * Handles database errors and returns appropriate response
  */
-export function handleDatabaseError(error: unknown): NextResponse<ErrorResponse> {
+export function handleDatabaseError(error: unknown, defaultMessage?: string): NextResponse<ErrorResponse> {
   const isDev = process.env.NODE_ENV === 'development';
   const errorMessage = error instanceof Error ? error.message : 'Unknown database error';
+  const message = defaultMessage || 'Database operation failed';
 
   // Don't expose internal errors in production
   if (!isDev) {
     return createErrorResponse(
-      'Database operation failed',
+      message,
       500
     );
   }
 
   return createErrorResponse(
-    'Database error',
+    message,
     500,
     errorMessage
   );
