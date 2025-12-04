@@ -5,130 +5,113 @@ import { storage } from '@/lib/storage';
 import { API_ENDPOINTS } from '@/lib/constants';
 
 export const tasksAPI = {
-  // Get all tasks from backend API
+  // Get all tasks from backend API (NO localStorage fallback - always use database)
   getTasks: async (): Promise<Task[]> => {
     try {
-      const res = await fetch(API_ENDPOINTS.TASKS || '/api/tasks');
+      const res = await fetch(API_ENDPOINTS.TASKS || '/api/tasks', {
+        credentials: 'include', // Include cookies for session
+      });
       if (!res.ok) {
-        console.error('Failed to fetch tasks from API, falling back to localStorage');
-        return storage.getTasks();
+        const errorText = await res.text();
+        console.error(`[getTasks] Failed to fetch tasks: ${res.status} ${errorText}`);
+        throw new Error(`Failed to fetch tasks: ${res.status}`);
       }
       const data = (await res.json()) as { tasks: Task[] };
+      console.log(`[getTasks] Fetched ${data.tasks.length} tasks from database`);
       return data.tasks;
     } catch (error) {
-      console.error('Error fetching tasks from API:', error);
-      // Fallback to localStorage for offline support
-      return storage.getTasks();
+      console.error('[getTasks] Error fetching tasks from API:', error);
+      // NO localStorage fallback - throw error instead
+      throw error;
     }
   },
 
-  // Get single task from backend API
+  // Get single task from backend API (NO localStorage fallback - always use database)
   getTask: async (taskId: string): Promise<Task | null> => {
     try {
-      const res = await fetch(API_ENDPOINTS.TASK_BY_ID(taskId));
+      const res = await fetch(API_ENDPOINTS.TASK_BY_ID(taskId), {
+        credentials: 'include', // Include cookies for session
+      });
       if (!res.ok) {
-        console.error('Failed to fetch task from API, falling back to localStorage');
-        const tasks = storage.getTasks();
-        return tasks.find(t => t.id === taskId) || null;
+        console.error(`[getTask] Failed to fetch task ${taskId}: ${res.status}`);
+        return null;
       }
       const data = (await res.json()) as { task: Task };
       return data.task;
     } catch (error) {
-      console.error('Error fetching task from API:', error);
-      // Fallback to localStorage
-      const tasks = storage.getTasks();
-      return tasks.find(t => t.id === taskId) || null;
+      console.error(`[getTask] Error fetching task ${taskId}:`, error);
+      // NO localStorage fallback - return null instead
+      return null;
     }
   },
 
-  // Create task via backend API
+  // Create task via backend API (NO localStorage fallback - always use database)
   createTask: async (task: Partial<Task>, userId: string): Promise<string> => {
     try {
       const res = await fetch(API_ENDPOINTS.TASKS || '/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies for session
         body: JSON.stringify(task),
       });
       
       if (!res.ok) {
-        throw new Error('Failed to create task');
+        const errorText = await res.text();
+        console.error(`[createTask] Failed to create task: ${res.status} ${errorText}`);
+        throw new Error(`Failed to create task: ${res.status}`);
       }
       
       const data = (await res.json()) as { task: Task };
+      console.log(`[createTask] Created task "${data.task.title}" with ID ${data.task.id} in database`);
       return data.task.id;
     } catch (error) {
-      console.error('Error creating task via API:', error);
-      // Fallback to localStorage
-      const tasks = storage.getTasks();
-      const now = new Date().toISOString();
-      const newTask: Task = {
-        ...task,
-        id: `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        title: task.title || '',
-        ownerId: task.ownerId || userId,
-        createdBy: userId,
-        priority: task.priority || 'medium',
-        status: task.status || 'todo',
-        dueDate: task.dueDate || now,
-        tags: task.tags || [],
-        subtasks: task.subtasks || [],
-        completed: task.completed || false,
-        createdAt: now,
-        updatedAt: now,
-      } as Task;
-      
-      tasks.push(newTask);
-      storage.saveTasks(tasks);
-      return newTask.id;
+      console.error('[createTask] Error creating task via API:', error);
+      // NO localStorage fallback - throw error instead
+      throw error;
     }
   },
 
-  // Update task via backend API
+  // Update task via backend API (NO localStorage fallback - always use database)
   updateTask: async (taskId: string, updates: Partial<Task>): Promise<void> => {
     try {
       const res = await fetch(`${API_ENDPOINTS.TASKS || '/api/tasks'}/${taskId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies for session
         body: JSON.stringify(updates),
       });
       
       if (!res.ok) {
-        throw new Error('Failed to update task');
+        const errorText = await res.text();
+        console.error(`[updateTask] Failed to update task ${taskId}: ${res.status} ${errorText}`);
+        throw new Error(`Failed to update task: ${res.status}`);
       }
+      console.log(`[updateTask] Updated task ${taskId} in database`);
     } catch (error) {
-      console.error('Error updating task via API:', error);
-      // Fallback to localStorage
-      const tasks = storage.getTasks();
-      const index = tasks.findIndex(t => t.id === taskId);
-      if (index === -1) {
-        throw new Error('Task not found');
-      }
-      
-      tasks[index] = {
-        ...tasks[index],
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      };
-      storage.saveTasks(tasks);
+      console.error(`[updateTask] Error updating task ${taskId}:`, error);
+      // NO localStorage fallback - throw error instead
+      throw error;
     }
   },
 
-  // Delete task via backend API
+  // Delete task via backend API (NO localStorage fallback - always use database)
   deleteTask: async (taskId: string): Promise<void> => {
     try {
       const res = await fetch(`${API_ENDPOINTS.TASKS || '/api/tasks'}/${taskId}`, {
         method: 'DELETE',
+        credentials: 'include', // Include cookies for session
       });
       
       if (!res.ok) {
-        throw new Error('Failed to delete task');
+        const errorText = await res.text();
+        console.error(`[deleteTask] Failed to delete task ${taskId}: ${res.status} ${errorText}`);
+        throw new Error(`Failed to delete task: ${res.status}`);
       }
+      console.log(`[deleteTask] Deleted task ${taskId} from database`);
     } catch (error) {
-      console.error('Error deleting task via API:', error);
-      // Fallback to localStorage
-      const tasks = storage.getTasks();
-      const filtered = tasks.filter(t => t.id !== taskId);
-      storage.saveTasks(filtered);
+      console.error(`[deleteTask] Error deleting task ${taskId}:`, error);
+      // NO localStorage fallback - throw error instead
+      throw error;
     }
   },
 
@@ -153,14 +136,10 @@ export const tasksAPI = {
         callback(data.tasks);
       } catch (error) {
         console.error('[subscribeToTasks] Error fetching tasks:', error);
-        // Fallback to localStorage only if user is not logged in
-        // If logged in, don't use localStorage to avoid showing stale data
-        let tasks = storage.getTasks();
-        if (filter?.assignedTo) {
-          tasks = tasks.filter(t => t.assignedTo?.includes(filter.assignedTo!));
-        }
-        console.warn(`[subscribeToTasks] Using ${tasks.length} tasks from localStorage (fallback)`);
-        callback(tasks);
+        // NO localStorage fallback - return empty array instead
+        // All tasks must be stored in database, not localStorage
+        console.warn('[subscribeToTasks] Failed to fetch from database, returning empty array (no localStorage fallback)');
+        callback([]);
       }
     };
     

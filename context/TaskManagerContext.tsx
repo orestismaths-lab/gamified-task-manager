@@ -267,14 +267,8 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         }
       } catch (error) {
         console.error('Error creating task:', error);
-        // Fallback to local state (use original member IDs for localStorage)
-        const newTask: Task = {
-          ...taskData, // Keep original member IDs for localStorage
-          id: generateId(),
-          createdAt: now,
-          updatedAt: now,
-        };
-        setTasks(prev => [...prev, newTask]);
+        // NO localStorage fallback - show error to user
+        throw error; // Re-throw to let caller handle the error
       }
     } else {
       // Save to localStorage (use member IDs)
