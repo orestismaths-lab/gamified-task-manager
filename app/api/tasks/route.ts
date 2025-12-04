@@ -23,6 +23,9 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: any[]
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Debug logging
+    console.log(`[GET /api/tasks] User: ${user.email} (${user.id})`);
+
     // Get tasks created by user or assigned to user
     const tasks = await prisma.task.findMany({
       where: {
@@ -61,6 +64,12 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: any[]
       orderBy: {
         createdAt: 'desc',
       },
+    });
+
+    // Debug logging
+    console.log(`[GET /api/tasks] Found ${tasks.length} tasks for user ${user.email}`);
+    tasks.forEach(task => {
+      console.log(`  - Task: ${task.title} (createdBy: ${task.createdById}, assignments: ${task.assignments.map(a => a.userId).join(', ')})`);
     });
 
     // Transform to frontend format
@@ -128,6 +137,12 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: any }
       return handleValidationError(['Task title is required']);
     }
 
+    // Debug logging
+    const assignedToUserIds = Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0
+      ? taskData.assignedTo as string[]
+      : [user.id];
+    console.log(`[POST /api/tasks] Creating task "${taskData.title}" for user ${user.email} (${user.id}), assignedTo: ${assignedToUserIds.join(', ')}`);
+
     // Create task with assignments
     const task = await prisma.task.create({
       data: {
@@ -148,11 +163,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: any }
             : [],
         },
         assignments: {
-          create: Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0
-            ? taskData.assignedTo.map((userId: string) => ({
-                userId,
-              }))
-            : [{ userId: user.id }], // Default: assign to creator
+          create: assignedToUserIds.map((userId: string) => ({
+            userId,
+          })),
         },
       },
       include: {
@@ -201,6 +214,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: any }
       assignedTo: task.assignments.map((a) => a.userId),
       createdBy: task.createdById,
     };
+
+    // Debug logging
+    console.log(`[POST /api/tasks] Created task "${transformedTask.title}" with ID ${transformedTask.id}, assignedTo: ${transformedTask.assignedTo.join(', ')}`);
 
     return NextResponse.json({ task: transformedTask }, { status: 201 });
   } catch (error) {
