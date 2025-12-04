@@ -16,6 +16,8 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(): Promise<NextResponse<{ members: Member[] } | { error: string; details?: string }>> {
   try {
+    logError('Members API - GET', { message: 'Starting fetch' });
+    
     // Get users from database with their member profiles (XP, level)
     const users = await prisma.user.findMany({
       orderBy: { email: 'asc' },
@@ -33,6 +35,8 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
       },
     });
 
+    logError('Members API - GET', { message: `Fetched ${users.length} users from database` });
+
     // Convert users to members format with XP/level from database
     const userMembers: Member[] = users.map((user) => ({
       id: user.id,
@@ -44,16 +48,10 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
       level: user.memberProfile?.level ?? 1, // Get level from database, default to 1
     }));
 
+    logError('Members API - GET', { message: `Returning ${userMembers.length} members` });
     return NextResponse.json({ members: userMembers });
   } catch (error) {
-    // Enhanced error logging
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const errorStack = error instanceof Error ? error.stack : undefined;
-    logError('Members API - GET', {
-      error: errorMessage,
-      stack: errorStack,
-      details: error,
-    });
+    logError('Members API - GET', error);
     return handleDatabaseError(error, 'Failed to fetch members');
   }
 }

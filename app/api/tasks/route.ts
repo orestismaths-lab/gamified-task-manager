@@ -18,16 +18,16 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: Task[] } | { error: string; details?: string }>> {
   try {
+    logError('Tasks API - GET', { message: 'Starting fetch' });
+    
     const user = await getSessionUser(req);
     
     if (!user) {
+      logError('Tasks API - GET', { message: 'Unauthorized - no user in session' });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Log for debugging (only in development)
-    if (process.env.NODE_ENV === 'development') {
-      logError('Tasks API - GET', { message: `User: ${user.email} (${user.id})` });
-    }
+    logError('Tasks API - GET', { message: `User: ${user.email} (${user.id})` });
 
     // Get tasks created by user or assigned to user
     const tasks = await prisma.task.findMany({
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: Task[
       },
     });
 
-    // Tasks fetched successfully
+    logError('Tasks API - GET', { message: `Fetched ${tasks.length} tasks from database` });
 
     // Transform to frontend format
     const transformedTasks: Task[] = tasks.map((task) => ({
@@ -101,6 +101,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: Task[
       createdBy: task.createdById,
     }));
 
+    logError('Tasks API - GET', { message: `Returning ${transformedTasks.length} transformed tasks` });
     return NextResponse.json({ tasks: transformedTasks });
   } catch (error) {
     logError('Tasks API - GET', error);
