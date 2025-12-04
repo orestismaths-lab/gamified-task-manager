@@ -18,6 +18,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
     }
 
+    // Check DATABASE_URL first
+    if (!process.env.DATABASE_URL) {
+      console.error('DATABASE_URL is not set');
+      return NextResponse.json(
+        { 
+          error: 'Database configuration error',
+          details: 'DATABASE_URL environment variable is not set. Please configure it in Vercel.'
+        },
+        { status: 500 }
+      );
+    }
+
     // Test Prisma connection first
     try {
       // Try to connect, but don't fail if already connected
@@ -32,16 +44,18 @@ export async function POST(req: NextRequest) {
     } catch (connectError: any) {
       console.error('Prisma connection error:', connectError);
       const errorMsg = connectError?.message || 'Unknown connection error';
+      const errorCode = connectError?.code || 'UNKNOWN';
       console.error('Full connection error:', {
         message: errorMsg,
-        code: connectError?.code,
+        code: errorCode,
         stack: connectError?.stack,
+        databaseUrl: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
       });
       // Include error message in production for debugging
       return NextResponse.json(
         { 
           error: 'Database connection failed',
-          details: errorMsg // Show in production temporarily for debugging
+          details: `${errorMsg} (Code: ${errorCode})` // Show in production temporarily for debugging
         },
         { status: 500 }
       );
