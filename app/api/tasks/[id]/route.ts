@@ -152,19 +152,45 @@ export async function PUT(
       assignedTo?: unknown;
     };
 
+    // Build update data object
+    const updateData: {
+      title?: string;
+      description?: string | null;
+      priority?: string;
+      status?: string;
+      dueDate?: Date | null;
+      tags?: string;
+      completed?: boolean;
+    } = {};
+
+    if (updates.title && typeof updates.title === 'string') {
+      updateData.title = updates.title.trim();
+    }
+    if (updates.description !== undefined) {
+      updateData.description = updates.description as string | null;
+    }
+    if (updates.priority) {
+      updateData.priority = updates.priority as string;
+    }
+    if (updates.status) {
+      updateData.status = updates.status as string;
+    }
+    if (updates.dueDate) {
+      updateData.dueDate = new Date(updates.dueDate as string);
+    }
+    if (updates.tags) {
+      updateData.tags = JSON.stringify(updates.tags);
+    }
+    if (updates.status === 'completed') {
+      updateData.completed = true;
+    } else if (updates.status && updates.status !== 'completed') {
+      updateData.completed = false;
+    }
+
     // Update task
     const task = await prisma.task.update({
       where: { id: params.id },
-      data: {
-        ...(updates.title && typeof updates.title === 'string' && { title: updates.title.trim() }),
-        ...(updates.description !== undefined && { description: updates.description as string | null }),
-        ...(updates.priority && { priority: updates.priority as string }),
-        ...(updates.status && { status: updates.status as string }),
-        ...(updates.dueDate && { dueDate: new Date(updates.dueDate as string) }),
-        ...(updates.tags && { tags: JSON.stringify(updates.tags) }),
-        ...(updates.status === 'completed' && { completed: true }),
-        ...(updates.status && updates.status !== 'completed' && { completed: false }),
-      },
+      data: updateData,
       include: {
         assignments: {
           include: {
