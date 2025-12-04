@@ -48,7 +48,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
 
     // Migrate tasks
     if (tasks && Array.isArray(tasks) && tasks.length > 0) {
-      console.log(`[migrate-data] Migrating ${tasks.length} tasks for user ${user.id}`);
+      // Migrating tasks
       
       for (const task of tasks) {
         try {

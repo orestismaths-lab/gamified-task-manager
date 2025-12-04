@@ -176,17 +176,43 @@ export async function PUT(
     if (updates.description !== undefined) {
       updateData.description = updates.description as string | null;
     }
-    if (updates.priority) {
-      updateData.priority = updates.priority as string;
+    if (updates.priority !== undefined) {
+      const validPriorities = ['low', 'medium', 'high'];
+      if (typeof updates.priority === 'string' && validPriorities.includes(updates.priority)) {
+        updateData.priority = updates.priority;
+      } else {
+        return handleValidationError([`Invalid priority: ${updates.priority}. Must be one of: ${validPriorities.join(', ')}`]);
+      }
     }
-    if (updates.status) {
-      updateData.status = updates.status as string;
+    if (updates.status !== undefined) {
+      const validStatuses = ['todo', 'in-progress', 'in-review', 'blocked', 'completed'];
+      if (typeof updates.status === 'string' && validStatuses.includes(updates.status)) {
+        updateData.status = updates.status;
+        updateData.completed = updates.status === 'completed';
+      } else {
+        return handleValidationError([`Invalid status: ${updates.status}. Must be one of: ${validStatuses.join(', ')}`]);
+      }
     }
-    if (updates.dueDate) {
-      updateData.dueDate = new Date(updates.dueDate as string);
+    if (updates.dueDate !== undefined) {
+      if (updates.dueDate === null || updates.dueDate === '') {
+        updateData.dueDate = null;
+      } else if (typeof updates.dueDate === 'string') {
+        const parsedDate = new Date(updates.dueDate);
+        if (!isNaN(parsedDate.getTime())) {
+          updateData.dueDate = parsedDate;
+        } else {
+          return handleValidationError([`Invalid date format: ${updates.dueDate}`]);
+        }
+      } else {
+        return handleValidationError(['dueDate must be a string or null']);
+      }
     }
-    if (updates.tags) {
-      updateData.tags = JSON.stringify(updates.tags);
+    if (updates.tags !== undefined) {
+      try {
+        updateData.tags = Array.isArray(updates.tags) ? JSON.stringify(updates.tags) : '[]';
+      } catch {
+        updateData.tags = '[]';
+      }
     }
     if (updates.status === 'completed') {
       updateData.completed = true;
@@ -235,19 +261,28 @@ export async function PUT(
     }
 
     // Update subtasks if provided
-    if (updates.subtasks && Array.isArray(updates.subtasks)) {
+    if (updates.subtasks !== undefined && Array.isArray(updates.subtasks)) {
       // Delete existing subtasks
       await prisma.subtask.deleteMany({
         where: { taskId: params.id },
       });
-      // Create new subtasks
-      await prisma.subtask.createMany({
-        data: (updates.subtasks as Array<{ title?: unknown; completed?: unknown }>).map((st) => ({
+      
+      // Create new subtasks (with validation)
+      const validSubtasks = updates.subtasks
+        .filter((st): st is { title?: unknown; completed?: unknown } => 
+          st !== null && typeof st === 'object'
+        )
+        .map((st) => ({
           taskId: params.id,
-          title: typeof st.title === 'string' ? st.title : '',
+          title: typeof st.title === 'string' ? st.title.trim() : '',
           completed: typeof st.completed === 'boolean' ? st.completed : false,
-        })),
-      });
+        }));
+      
+      if (validSubtasks.length > 0) {
+        await prisma.subtask.createMany({
+          data: validSubtasks,
+        });
+      }
     }
 
     // Fetch updated task with all relations
@@ -296,17 +331,17 @@ export async function PUT(
           return [];
         }
       })(),
-      subtasks: updatedTask.subtasks.map((st) => ({
+      subtasks: (updatedTask.subtasks || []).map((st) => ({
         id: st.id,
-        title: st.title,
-        completed: st.completed,
+        title: st.title || '',
+        completed: st.completed || false,
         createdAt: st.createdAt.toISOString(),
         updatedAt: st.updatedAt.toISOString(),
       })),
-      completed: updatedTask.completed,
+      completed: updatedTask.completed || false,
       createdAt: updatedTask.createdAt.toISOString(),
       updatedAt: updatedTask.updatedAt.toISOString(),
-      assignedTo: updatedTask.assignments.map((a) => a.userId),
+      assignedTo: (updatedTask.assignments || []).map((a) => a.userId).filter((id): id is string => !!id),
       createdBy: updatedTask.createdById,
     };
 

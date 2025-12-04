@@ -69,11 +69,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: Task[
       },
     });
 
-    // Debug logging
-    console.log(`[GET /api/tasks] Found ${tasks.length} tasks for user ${user.email}`);
-    tasks.forEach(task => {
-      console.log(`  - Task: ${task.title} (createdBy: ${task.createdById}, assignments: ${task.assignments.map(a => a.userId).join(', ')})`);
-    });
+    // Tasks fetched successfully
 
     // Transform to frontend format
     const transformedTasks: Task[] = tasks.map((task) => ({
