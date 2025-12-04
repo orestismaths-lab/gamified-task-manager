@@ -10,6 +10,7 @@ import { TaskCard } from './TaskCard';
 import { KanbanBoard } from './KanbanBoard';
 import { MemberManagement } from './MemberManagement';
 import { DataManagement } from './DataManagement';
+import { DataMigration } from './DataMigration';
 import { StatisticsDashboard } from './StatisticsDashboard';
 import { TaskTemplates } from './TaskTemplates';
 import { CalendarView } from './CalendarView';
