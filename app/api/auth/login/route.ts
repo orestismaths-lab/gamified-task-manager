@@ -90,10 +90,17 @@ export async function POST(req: NextRequest) {
     console.error('Login error:', err);
     const errorMessage = err?.message || 'Unknown error';
     const errorStack = err?.stack || '';
-    console.error('Error details:', { errorMessage, errorStack });
+    console.error('Error details:', { errorMessage, errorStack, error: err });
+    
+    // Provide more helpful error message in production
+    let userFriendlyError = 'Failed to login';
+    if (errorMessage.includes('SQLite') || errorMessage.includes('database') || errorMessage.includes('ENOENT') || errorMessage.includes('Prisma')) {
+      userFriendlyError = 'Database connection error. Please try again later.';
+    }
+    
     return NextResponse.json(
       { 
-        error: 'Failed to login',
+        error: userFriendlyError,
         details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
       },
       { status: 500 }
