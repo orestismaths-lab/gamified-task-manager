@@ -97,7 +97,7 @@ export async function PUT(
       avatar?: string;
     };
 
-    const updateData: { name?: string; avatar?: string } = {};
+    const updateData: { name?: string; avatar?: string | null } = {};
     if (name !== undefined) {
       if (typeof name !== 'string' || name.trim().length === 0) {
         return handleValidationError(['Member name cannot be empty']);
