@@ -41,6 +41,43 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check for failed migrations first
+    console.log('🔍 Checking for failed migrations...');
+    try {
+      const statusOutput = execSync('npx prisma migrate status', {
+        encoding: 'utf-8',
+        env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || '' }
+      });
+      console.log('Migration status:', statusOutput);
+      
+      // If there are failed migrations, resolve them
+      if (statusOutput.includes('failed') || statusOutput.includes('Failed')) {
+        console.log('⚠️ Found failed migrations, resolving...');
+        try {
+          // Mark failed migration as rolled back
+          execSync('npx prisma migrate resolve --rolled-back 20251203154938_init', {
+            encoding: 'utf-8',
+            env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || '' }
+          });
+          console.log('✅ Resolved failed migration');
+        } catch (resolveError: any) {
+          console.log('⚠️ Could not resolve migration, trying to continue...');
+          // Try to mark as applied if rolled back doesn't work
+          try {
+            execSync('npx prisma migrate resolve --applied 20251203154938_init', {
+              encoding: 'utf-8',
+              env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || '' }
+            });
+            console.log('✅ Marked failed migration as applied');
+          } catch (e) {
+            console.log('⚠️ Could not resolve, will try to deploy anyway...');
+          }
+        }
+      }
+    } catch (statusError) {
+      console.log('⚠️ Could not check migration status, continuing...');
+    }
+
     // Run migrations
     console.log('🚀 Deploying migrations...');
     try {
@@ -59,11 +96,25 @@ export async function POST(req: NextRequest) {
       });
     } catch (error: any) {
       console.error('❌ Migration failed:', error.message);
+      const errorOutput = error.stdout || error.stderr || error.message;
+      
+      // If error is about failed migrations, provide resolution steps
+      if (errorOutput.includes('P3009') || errorOutput.includes('failed migrations')) {
+        return NextResponse.json(
+          { 
+            error: 'Migration failed due to previous failed migration',
+            details: errorOutput,
+            resolution: 'The migration endpoint will try to resolve this automatically. Call it again, or manually run: npx prisma migrate resolve --rolled-back 20251203154938_init'
+          },
+          { status: 500 }
+        );
+      }
+      
       return NextResponse.json(
         { 
           error: 'Migration failed',
           details: error.message,
-          output: error.stdout || error.stderr
+          output: errorOutput
         },
         { status: 500 }
       );
