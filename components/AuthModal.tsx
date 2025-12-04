@@ -58,9 +58,25 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
         onClose();
       } else {
         // Register user
-        await authAPI.register(email, password, displayName);
-        // Move to member selection step
-        setStep('selectMember');
+        const registeredUser = await authAPI.register(email, password, displayName);
+        
+        // Automatically create member with the display name from sign up
+        try {
+          await membersAPI.createMember(
+            {
+              name: displayName.trim() || registeredUser.email.split('@')[0] || 'User',
+              email: registeredUser.email,
+            },
+            registeredUser.id
+          );
+          // Member created successfully, proceed to dashboard
+          onSuccess();
+          onClose();
+        } catch (memberError) {
+          console.error('Error creating member:', memberError);
+          // If member creation fails, show member selection step as fallback
+          setStep('selectMember');
+        }
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
