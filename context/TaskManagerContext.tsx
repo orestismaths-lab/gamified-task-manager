@@ -368,11 +368,11 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
     if (task.ownerId) {
       if (newCompleted) {
-        // Add XP for completing task
-        addXP(task.ownerId, 50);
+        // Add XP for completing task (async - fire and forget)
+        addXP(task.ownerId, 50).catch(err => console.error('Error adding XP:', err));
         // Add XP for already completed subtasks
         task.subtasks.filter(st => st.completed).forEach(() => {
-          addXP(task.ownerId!, 10);
+          addXP(task.ownerId!, 10).catch(err => console.error('Error adding XP:', err));
         });
 
         // Handle recurring tasks - create next occurrence
@@ -427,11 +427,11 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
           setTasks(prev => [...prev, nextTask]);
         }
       } else {
-        // Remove XP for uncompleting task
-        removeXP(task.ownerId, 50);
+        // Remove XP for uncompleting task (async - fire and forget)
+        removeXP(task.ownerId, 50).catch(err => console.error('Error removing XP:', err));
         // Remove XP for completed subtasks
         task.subtasks.filter(st => st.completed).forEach(() => {
-          removeXP(task.ownerId, 10);
+          removeXP(task.ownerId, 10).catch(err => console.error('Error removing XP:', err));
         });
       }
     }
@@ -476,9 +476,11 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
     if (task.ownerId) {
       if (newCompleted) {
-        addXP(task.ownerId, 10);
+        // Add XP (async - fire and forget)
+        addXP(task.ownerId, 10).catch(err => console.error('Error adding XP:', err));
       } else {
-        removeXP(task.ownerId, 10);
+        // Remove XP (async - fire and forget)
+        removeXP(task.ownerId, 10).catch(err => console.error('Error removing XP:', err));
       }
     }
   }, [tasks, updateSubtask, addXP, removeXP]);
@@ -489,7 +491,8 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
     const subtask = task.subtasks.find(st => st.id === subtaskId);
     if (subtask?.completed && task.ownerId) {
-      removeXP(task.ownerId, 10);
+      // Remove XP (async - fire and forget)
+      removeXP(task.ownerId, 10).catch(err => console.error('Error removing XP:', err));
     }
 
     setTasks(prev => prev.map(t =>

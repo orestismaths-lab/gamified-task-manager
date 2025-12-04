@@ -22,6 +22,21 @@ model User {
   // Relations
   tasksCreated Task[] @relation("TaskCreator")
   tasksAssigned TaskAssignment[]
+  memberProfile MemberProfile? // One-to-one with member profile
+}
+
+// Member profile for gamification (XP, level, etc.)
+// Each user can have one member profile
+model MemberProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  xp        Int      @default(0)
+  level     Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Task {

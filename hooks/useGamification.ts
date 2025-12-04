@@ -1,36 +1,36 @@
 // Hook for handling XP and level calculations
+// Now uses database API instead of localStorage
 
 import { useCallback } from 'react';
 import { Member, XP_CONSTANTS, calculateLevel, getXPProgress } from '@/types';
-import { storage } from '@/lib/storage';
+import { API_ENDPOINTS } from '@/lib/constants';
 
 export function useGamification() {
-  const addXP = useCallback((memberId: string, xpAmount: number): Member | null => {
-    const members = storage.getMembers();
-    const member = members.find(m => m.id === memberId);
-    
-    if (!member) return null;
+  const addXP = useCallback(async (memberId: string, xpAmount: number): Promise<Member | null> => {
+    try {
+      const res = await fetch(`${API_ENDPOINTS.MEMBERS}/${memberId}/xp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies for session
+        body: JSON.stringify({ amount: xpAmount }),
+      });
 
-    const newXP = Math.max(0, member.xp + xpAmount);
-    const newLevel = calculateLevel(newXP);
-    const wasLevelUp = newLevel > member.level;
+      if (!res.ok) {
+        console.error(`[addXP] Failed to update XP: ${res.status}`);
+        return null;
+      }
 
-    const updatedMember: Member = {
-      ...member,
-      xp: newXP,
-      level: newLevel,
-    };
-
-    const updatedMembers = members.map(m => 
-      m.id === memberId ? updatedMember : m
-    );
-
-    storage.saveMembers(updatedMembers);
-
-    return wasLevelUp ? updatedMember : null;
+      const data = (await res.json()) as { member: Member; wasLevelUp: boolean };
+      
+      // Return member if level up, null otherwise
+      return data.wasLevelUp ? data.member : null;
+    } catch (error) {
+      console.error('[addXP] Error updating XP:', error);
+      return null;
+    }
   }, []);
 
-  const removeXP = useCallback((memberId: string, xpAmount: number): Member | null => {
+  const removeXP = useCallback(async (memberId: string, xpAmount: number): Promise<Member | null> => {
     return addXP(memberId, -xpAmount);
   }, [addXP]);
 

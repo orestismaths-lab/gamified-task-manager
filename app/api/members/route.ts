@@ -12,13 +12,11 @@ export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/members
- * Returns a list of all members for task assignment:
- * - Users from database (with userId)
- * - Members from localStorage (may not have userId - created by admin before user signup)
+ * Returns a list of all members for task assignment with XP/level from database
  */
 export async function GET(): Promise<NextResponse<{ members: Member[] } | { error: string; details?: string }>> {
   try {
-    // Get users from database
+    // Get users from database with their member profiles (XP, level)
     const users = await prisma.user.findMany({
       orderBy: { createdAt: 'asc' },
       select: {
@@ -27,23 +25,26 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
         name: true,
         avatar: true,
         createdAt: true,
+        memberProfile: {
+          select: {
+            xp: true,
+            level: true,
+          },
+        },
       },
     });
 
-    // Convert users to members format
+    // Convert users to members format with XP/level from database
     const userMembers: Member[] = users.map((user) => ({
       id: user.id,
       name: user.name || user.email.split('@')[0] || 'User',
       email: user.email,
       userId: user.id,
       avatar: user.avatar || undefined,
-      xp: 0, // Default XP for new members
-      level: 1, // Default level
+      xp: user.memberProfile?.xp ?? 0, // Get XP from database, default to 0
+      level: user.memberProfile?.level ?? 1, // Get level from database, default to 1
     }));
 
-    // Note: Members without userId are stored in localStorage and loaded client-side
-    // This endpoint returns only users (with userId). 
-    // Client-side code will merge with localStorage members.
     return NextResponse.json({ members: userMembers });
   } catch (error) {
     logError('Members API - GET', error);

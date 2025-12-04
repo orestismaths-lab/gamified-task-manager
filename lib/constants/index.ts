@@ -34,6 +34,8 @@ export const API_ENDPOINTS = {
   ME: '/api/auth/me',
   ADMIN_USERS: '/api/admin/users',
   MEMBERS: '/api/members',
+  MEMBER_BY_ID: (id: string) => `/api/members/${id}`,
+  MEMBER_XP: (id: string) => `/api/members/${id}/xp`,
   TASKS: '/api/tasks',
   TASK_BY_ID: (id: string) => `/api/tasks/${id}`,
   MIGRATE: '/api/migrate',
