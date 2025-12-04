@@ -67,48 +67,49 @@ export function MemberManagement() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
           Member Management
         </h1>
-        <p className="text-gray-600 mt-1">Manage your team members and track their progress</p>
+        <p className="text-gray-600 dark:text-gray-400 mt-1 text-sm sm:text-base">Manage your team members and track their progress</p>
       </div>
 
       {/* Add Member Form */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-8 relative z-10"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700 mb-6 sm:mb-8 relative z-10"
       >
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Add New Member</h2>
-        <div className="flex gap-3 relative z-10">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Add New Member</h2>
+        <div className="flex flex-col sm:flex-row gap-3 relative z-10">
           <input
             type="text"
             value={newMemberName}
             onChange={(e) => setNewMemberName(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleAddMember()}
             placeholder="Enter member name"
-            className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-purple-400 focus:outline-none"
+            className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 dark:focus:border-purple-500 focus:outline-none"
           />
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={handleAddMember}
             disabled={!newMemberName.trim()}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 relative z-10"
+            className="px-4 sm:px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 relative z-10"
             type="button"
           >
             <UserPlus className="w-5 h-5" />
-            Add Member
+            <span className="hidden sm:inline">Add Member</span>
+            <span className="sm:hidden">Add</span>
           </motion.button>
         </div>
       </motion.div>
 
       {/* Members List */}
       <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">All Members ({members.length})</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">All Members ({members.length})</h2>
 
         {members.length === 0 ? (
           <motion.div

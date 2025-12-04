@@ -125,11 +125,11 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
-          className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden"
+          className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 sm:mx-6 overflow-hidden"
         >
           <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 text-white">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold">
+              <h2 className="text-xl sm:text-2xl font-bold">
                 {step === 'login' && 'Welcome Back!'}
                 {step === 'register' && 'Create Account'}
                 {step === 'selectMember' && 'Select Your Member Profile'}
@@ -144,7 +144,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           </div>
 
           {step === 'selectMember' ? (
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4">
               {error && (
                 <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
                   {error}
@@ -242,7 +242,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
               </div>
             </div>
           ) : (
-            <form onSubmit={handleAuthSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleAuthSubmit} className="p-4 sm:p-6 space-y-4">
             {error && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
                 {error}

@@ -172,10 +172,10 @@ export function TaskInput() {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-4xl mx-auto px-4 py-6"
+      className="max-w-4xl mx-auto px-4 sm:px-6 py-4 sm:py-6"
     >
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="flex gap-4 items-start">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex flex-col sm:flex-row gap-4 items-start">
           <div className="flex-1 space-y-4">
             <div className="flex gap-2 relative">
               <div className="flex-1 relative">

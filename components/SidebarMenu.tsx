@@ -22,9 +22,10 @@ export function SidebarMenu({ activeView, onViewChange }: SidebarMenuProps) {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed left-4 top-4 p-2 bg-white rounded-lg border border-gray-200 shadow-md hover:bg-gray-50 transition-colors z-50"
+          className="fixed left-2 sm:left-4 top-2 sm:top-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors z-50"
+          aria-label="Open menu"
         >
-          <Menu className="w-5 h-5 text-gray-700" />
+          <Menu className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300" />
         </button>
       )}
 
@@ -37,15 +38,16 @@ export function SidebarMenu({ activeView, onViewChange }: SidebarMenuProps) {
         {/* Close Button */}
         <button
           onClick={() => setIsOpen(false)}
-          className="absolute right-4 top-4 p-2 bg-white rounded-lg border border-gray-200 shadow-md hover:bg-gray-50 transition-colors z-10"
+          className="absolute right-2 sm:right-4 top-2 sm:top-4 p-2 sm:p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors z-10"
+          aria-label="Close menu"
         >
-          <X className="w-5 h-5 text-gray-700" />
+          <X className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300" />
         </button>
 
       {/* Menu Content */}
-      <div className="p-6 flex-1 overflow-y-auto">
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+      <div className="p-4 sm:p-6 flex-1 overflow-y-auto">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
             Menu
           </h2>
         </div>
