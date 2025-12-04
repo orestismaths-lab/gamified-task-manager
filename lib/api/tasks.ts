@@ -25,7 +25,7 @@ export const tasksAPI = {
   // Get single task from backend API
   getTask: async (taskId: string): Promise<Task | null> => {
     try {
-      const res = await fetch(`${API_ENDPOINTS.TASKS || '/api/tasks'}/${taskId}`);
+      const res = await fetch(API_ENDPOINTS.TASK_BY_ID(taskId));
       if (!res.ok) {
         console.error('Failed to fetch task from API, falling back to localStorage');
         const tasks = storage.getTasks();

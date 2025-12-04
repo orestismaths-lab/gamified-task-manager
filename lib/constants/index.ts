@@ -35,6 +35,7 @@ export const API_ENDPOINTS = {
   ADMIN_USERS: '/api/admin/users',
   MEMBERS: '/api/members',
   TASKS: '/api/tasks',
+  TASK_BY_ID: (id: string) => `/api/tasks/${id}`,
   MIGRATE: '/api/migrate',
 } as const;
 
