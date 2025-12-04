@@ -18,13 +18,12 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
   try {
     // Get users from database with their member profiles (XP, level)
     const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'asc' },
+      orderBy: { email: 'asc' }, // Use email instead of createdAt which might not exist
       select: {
         id: true,
         email: true,
         name: true,
         avatar: true,
-        createdAt: true,
         memberProfile: {
           select: {
             xp: true,
