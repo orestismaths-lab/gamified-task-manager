@@ -11,10 +11,19 @@ export async function POST(req: NextRequest) {
   try {
     // Check for secret key
     const authHeader = req.headers.get('authorization');
-    const providedSecret = authHeader?.replace('Bearer ', '') || 
-                          (await req.json()).then((body: any) => body.secret).catch(() => null);
+    let providedSecret = authHeader?.replace('Bearer ', '');
+    
+    // If not in header, try to get from body
+    if (!providedSecret) {
+      try {
+        const body = await req.json();
+        providedSecret = body.secret;
+      } catch (e) {
+        // Body might be empty or invalid JSON
+      }
+    }
 
-    if (providedSecret !== MIGRATE_SECRET) {
+    if (!providedSecret || providedSecret !== MIGRATE_SECRET) {
       return NextResponse.json(
         { error: 'Unauthorized. Provide MIGRATE_SECRET in Authorization header or body.' },
         { status: 401 }
