@@ -18,7 +18,7 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
   try {
     // Get users from database with their member profiles (XP, level)
     const users = await prisma.user.findMany({
-      orderBy: { email: 'asc' }, // Use email instead of createdAt which might not exist
+      orderBy: { email: 'asc' },
       select: {
         id: true,
         email: true,
@@ -46,7 +46,14 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
 
     return NextResponse.json({ members: userMembers });
   } catch (error) {
-    logError('Members API - GET', error);
+    // Enhanced error logging
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logError('Members API - GET', {
+      error: errorMessage,
+      stack: errorStack,
+      details: error,
+    });
     return handleDatabaseError(error, 'Failed to fetch members');
   }
 }
