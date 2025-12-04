@@ -52,9 +52,23 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
       
       for (const task of tasks) {
         try {
-          // Check if task already exists
-          const existingTask = await prisma.task.findUnique({
-            where: { id: task.id },
+          // Validate task has required fields
+          if (!task.id || !task.title || typeof task.title !== 'string' || task.title.trim().length === 0) {
+            logError('[migrate-data] Skipping invalid task:', { id: task.id, title: task.title });
+            continue;
+          }
+
+          // Check if task already exists (by ID or by title + createdBy for same user)
+          const existingTask = await prisma.task.findFirst({
+            where: {
+              OR: [
+                { id: task.id },
+                {
+                  title: task.title.trim(),
+                  createdById: user.id,
+                },
+              ],
+            },
           });
 
           if (existingTask) {
@@ -62,15 +76,43 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
             continue;
           }
 
-          // Create task in database
+          // Validate priority and status
+          const validPriorities = ['low', 'medium', 'high'];
+          const validStatuses = ['todo', 'in-progress', 'in-review', 'blocked', 'completed'];
+          
+          const priority = (() => {
+            if (task.priority && typeof task.priority === 'string' && validPriorities.includes(task.priority)) {
+              return task.priority;
+            }
+            return 'medium';
+          })();
+
+          const status = (() => {
+            if (task.status && typeof task.status === 'string' && validStatuses.includes(task.status)) {
+              return task.status;
+            }
+            return task.completed ? 'completed' : 'todo';
+          })();
+
+          // Validate and parse dueDate
+          let dueDate: Date | null = null;
+          if (task.dueDate) {
+            if (typeof task.dueDate === 'string') {
+              const parsedDate = new Date(task.dueDate);
+              if (!isNaN(parsedDate.getTime())) {
+                dueDate = parsedDate;
+              }
+            }
+          }
+
+          // Create task in database (generate new ID to avoid conflicts)
           await prisma.task.create({
             data: {
-              id: task.id,
-              title: task.title,
-              description: task.description || null,
-              priority: task.priority || 'medium',
-              status: task.status || (task.completed ? 'completed' : 'todo'),
-              dueDate: task.dueDate ? new Date(task.dueDate) : null,
+              title: task.title.trim(),
+              description: task.description && typeof task.description === 'string' ? task.description.trim() : null,
+              priority,
+              status,
+              dueDate,
               tags: (() => {
                 try {
                   return Array.isArray(task.tags) ? JSON.stringify(task.tags) : '[]';
@@ -78,7 +120,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
                   return '[]';
                 }
               })(),
-              completed: task.completed || false,
+              completed: status === 'completed' || task.completed || false,
               createdById: user.id, // Assign to current user
               subtasks: {
                 create: Array.isArray(task.subtasks)
@@ -102,7 +144,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
 
           importedTasks++;
         } catch (error) {
-          logError(`[migrate-data] Error importing task ${task.id}:`, error);
+          logError(`[migrate-data] Error importing task ${task.id || 'unknown'}:`, error);
           // Continue with next task
         }
       }
