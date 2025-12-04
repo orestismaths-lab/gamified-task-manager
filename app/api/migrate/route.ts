@@ -24,8 +24,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (!providedSecret || providedSecret !== MIGRATE_SECRET) {
+      console.error('Migration auth failed:', {
+        provided: providedSecret ? '***' : 'none',
+        expected: MIGRATE_SECRET ? '***' : 'not set',
+        hasAuthHeader: !!authHeader,
+      });
       return NextResponse.json(
-        { error: 'Unauthorized. Provide MIGRATE_SECRET in Authorization header or body.' },
+        { 
+          error: 'Unauthorized. Provide MIGRATE_SECRET in Authorization header or body.',
+          hint: 'Check that MIGRATE_SECRET environment variable is set in Vercel and matches the secret you provide.'
+        },
         { status: 401 }
       );
     }
