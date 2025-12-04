@@ -306,12 +306,9 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         // Real-time listener will update state automatically
       } catch (error) {
         console.error('Error updating task:', error);
-        // Fallback to local state (use original member IDs)
-        setTasks(prev => prev.map(task => 
-          task.id === id 
-            ? { ...task, ...updates, updatedAt: new Date().toISOString() }
-            : task
-        ));
+        // NO localStorage fallback - all tasks must be in database
+        // Re-throw error to show user-friendly message
+        throw error;
       }
     } else {
       // Update in localStorage (use member IDs)
