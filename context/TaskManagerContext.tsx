@@ -164,24 +164,24 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     []
   );
 
-  // Save to localStorage whenever state changes (debounced) - only if not using Firestore
+  // Save to localStorage whenever state changes (debounced) - only if not logged in
   useEffect(() => {
-    if (!useFirestore) {
+    if (!user?.id) {
       debouncedSaveTasks(tasks);
     }
-  }, [tasks, debouncedSaveTasks, useFirestore]);
+  }, [tasks, debouncedSaveTasks, user?.id]);
 
   useEffect(() => {
-    if (!useFirestore) {
+    if (!user?.id) {
       debouncedSaveMembers(members);
     }
-  }, [members, debouncedSaveMembers, useFirestore]);
+  }, [members, debouncedSaveMembers, user?.id]);
 
   useEffect(() => {
-    if (!useFirestore) {
+    if (!user?.id) {
       debouncedSaveSelectedMember(selectedMemberId);
     }
-  }, [selectedMemberId, debouncedSaveSelectedMember, useFirestore]);
+  }, [selectedMemberId, debouncedSaveSelectedMember, user?.id]);
 
   // Generate unique ID
   const generateId = useCallback(() => {
@@ -198,8 +198,8 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       createdBy: user?.id || undefined,
     };
 
-    if (useFirestore && user?.id) {
-      // Save to Firestore
+    if (user?.id) {
+      // Save to backend API
       try {
         await tasksAPI.createTask(newTaskData, user.id);
         // Real-time listener will update state automatically
@@ -224,11 +224,11 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       };
       setTasks(prev => [...prev, newTask]);
     }
-  }, [generateId, useFirestore, user]);
+  }, [generateId, user]);
 
   const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
-    if (useFirestore && user) {
-      // Update in Firestore
+    if (user?.id) {
+      // Update in backend API
       try {
         await tasksAPI.updateTask(id, updates);
         // Real-time listener will update state automatically
@@ -249,7 +249,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
           : task
       ));
     }
-  }, [useFirestore, user]);
+  }, [user]);
 
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -262,8 +262,8 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       });
     }
     
-    if (useFirestore && user?.id) {
-      // Delete from Firestore
+    if (user?.id) {
+      // Delete from backend API
       try {
         await tasksAPI.deleteTask(id);
         // Real-time listener will update state automatically
@@ -276,7 +276,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       // Delete from localStorage
       setTasks(prev => prev.filter(task => task.id !== id));
     }
-  }, [tasks, removeXP, useFirestore, user]);
+  }, [tasks, removeXP, user]);
 
   const toggleTaskComplete = useCallback((id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -428,8 +428,8 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
   // Member operations
   const addMember = useCallback(async (memberData: Omit<Member, 'id' | 'xp' | 'level'>) => {
-    if (useFirestore && user?.id) {
-      // Save to Firestore
+    if (user?.id) {
+      // Save to backend API
       try {
         await membersAPI.createMember(memberData, user.id);
         // Real-time listener will update state automatically
@@ -454,11 +454,11 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       };
       setMembers(prev => [...prev, newMember]);
     }
-  }, [generateId, useFirestore, user]);
+  }, [generateId, user]);
 
   const updateMember = useCallback(async (id: string, updates: Partial<Member>) => {
-    if (useFirestore && user?.id) {
-      // Update in Firestore
+    if (user?.id) {
+      // Update in backend API
       try {
         await membersAPI.updateMember(id, updates);
         // Real-time listener will update state automatically
@@ -475,13 +475,13 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         member.id === id ? { ...member, ...updates } : member
       ));
     }
-  }, [useFirestore, user]);
+  }, [user]);
 
   const deleteMember = useCallback(async (id: string) => {
     // Don't allow deleting if it's the only member
     if (members.length <= 1) return;
     
-    if (useFirestore && user?.id) {
+    if (user?.id) {
       // Delete from Firestore
       try {
         // Delete all tasks owned by this member
@@ -517,7 +517,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       }
       setMembers(prev => prev.filter(member => member.id !== id));
     }
-  }, [members, selectedMemberId, useFirestore, user, tasks]);
+  }, [members, selectedMemberId, user, tasks]);
 
   const setSelectedMember = useCallback((memberId: string | null) => {
     setSelectedMemberId(memberId);
