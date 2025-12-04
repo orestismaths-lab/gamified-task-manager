@@ -11,6 +11,18 @@ async function checkAndMarkMigrations() {
   try {
     console.log('🔍 Checking if tables exist...');
 
+    // Check which tables exist first (needed for migration resolution)
+    const tables = await prisma.$queryRaw`
+      SELECT tablename 
+      FROM pg_tables 
+      WHERE schemaname = 'public' 
+        AND tablename IN ('User', 'Task', 'Subtask', 'TaskAssignment', 'MemberProfile', '_prisma_migrations')
+      ORDER BY tablename
+    `;
+
+    const existingTables = tables.map(t => t.tablename);
+    console.log(`📊 Found tables: ${existingTables.join(', ')}`);
+
     // First, resolve any failed migrations
     console.log('🔧 Checking for failed migrations...');
     try {
@@ -23,27 +35,58 @@ async function checkAndMarkMigrations() {
       if (failedMigrations.length > 0) {
         console.log(`⚠️  Found ${failedMigrations.length} failed migration(s), resolving...`);
         for (const migration of failedMigrations) {
-          try {
-            await prisma.$executeRaw`
-              UPDATE "_prisma_migrations" 
-              SET rolled_back_at = NOW() 
-              WHERE migration_name = ${migration.migration_name} 
-                AND finished_at IS NULL 
-                AND rolled_back_at IS NULL
-            `;
-            console.log(`✅ Resolved failed migration: ${migration.migration_name}`);
-          } catch (error) {
-            console.log(`⚠️  Could not resolve ${migration.migration_name}, will try to mark as applied...`);
+          // Check if tables from this migration exist
+          let shouldMarkAsApplied = false;
+          
+          if (migration.migration_name === '20251204000000_init_postgres') {
+            // Check if User and Task tables exist (main tables from this migration)
+            const userExists = existingTables.includes('User');
+            const taskExists = existingTables.includes('Task');
+            shouldMarkAsApplied = userExists && taskExists;
+          } else if (migration.migration_name === '20251205000000_add_member_profile') {
+            // Check if MemberProfile table exists
+            shouldMarkAsApplied = existingTables.includes('MemberProfile');
+          }
+          
+          if (shouldMarkAsApplied) {
+            // Mark as applied if tables exist
             try {
               await prisma.$executeRaw`
                 UPDATE "_prisma_migrations" 
-                SET finished_at = NOW(), applied_steps_count = 1
+                SET finished_at = NOW(), applied_steps_count = 1, rolled_back_at = NULL
                 WHERE migration_name = ${migration.migration_name} 
                   AND finished_at IS NULL
               `;
-              console.log(`✅ Marked ${migration.migration_name} as applied`);
-            } catch (e) {
-              console.log(`⚠️  Could not mark ${migration.migration_name} as applied`);
+              console.log(`✅ Marked ${migration.migration_name} as applied (tables exist)`);
+            } catch (error) {
+              console.log(`⚠️  Could not mark ${migration.migration_name} as applied:`, error.message);
+              // Fallback: mark as rolled-back
+              try {
+                await prisma.$executeRaw`
+                  UPDATE "_prisma_migrations" 
+                  SET rolled_back_at = NOW() 
+                  WHERE migration_name = ${migration.migration_name} 
+                    AND finished_at IS NULL 
+                    AND rolled_back_at IS NULL
+                `;
+                console.log(`✅ Marked ${migration.migration_name} as rolled-back`);
+              } catch (e) {
+                console.log(`⚠️  Could not resolve ${migration.migration_name}`);
+              }
+            }
+          } else {
+            // Mark as rolled-back if tables don't exist
+            try {
+              await prisma.$executeRaw`
+                UPDATE "_prisma_migrations" 
+                SET rolled_back_at = NOW() 
+                WHERE migration_name = ${migration.migration_name} 
+                  AND finished_at IS NULL 
+                  AND rolled_back_at IS NULL
+              `;
+              console.log(`✅ Marked ${migration.migration_name} as rolled-back (tables missing)`);
+            } catch (error) {
+              console.log(`⚠️  Could not resolve ${migration.migration_name}:`, error.message);
             }
           }
         }
@@ -52,7 +95,7 @@ async function checkAndMarkMigrations() {
       console.log('⚠️  Could not check for failed migrations:', error.message);
     }
 
-    // Check which tables exist
+    // Check which tables exist (do this first to use in failed migration resolution)
     const tables = await prisma.$queryRaw`
       SELECT tablename 
       FROM pg_tables 
