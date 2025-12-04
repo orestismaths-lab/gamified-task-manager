@@ -22,10 +22,23 @@ export const tasksAPI = {
     }
   },
 
-  // Get single task
+  // Get single task from backend API
   getTask: async (taskId: string): Promise<Task | null> => {
-    const tasks = storage.getTasks();
-    return tasks.find(t => t.id === taskId) || null;
+    try {
+      const res = await fetch(`${API_ENDPOINTS.TASKS || '/api/tasks'}/${taskId}`);
+      if (!res.ok) {
+        console.error('Failed to fetch task from API, falling back to localStorage');
+        const tasks = storage.getTasks();
+        return tasks.find(t => t.id === taskId) || null;
+      }
+      const data = (await res.json()) as { task: Task };
+      return data.task;
+    } catch (error) {
+      console.error('Error fetching task from API:', error);
+      // Fallback to localStorage
+      const tasks = storage.getTasks();
+      return tasks.find(t => t.id === taskId) || null;
+    }
   },
 
   // Create task via backend API

@@ -221,8 +221,36 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     if (user?.id) {
       // Save to backend API
       try {
-        await tasksAPI.createTask(newTaskData, user.id);
-        // Real-time listener will update state automatically
+        const taskId = await tasksAPI.createTask(newTaskData, user.id);
+        // Fetch the created task immediately to update state
+        // This ensures cross-device sync works correctly
+        try {
+          const createdTask = await tasksAPI.getTask(taskId);
+          if (createdTask) {
+            setTasks(prev => {
+              // Check if task already exists (avoid duplicates)
+              if (prev.find(t => t.id === createdTask.id)) {
+                return prev;
+              }
+              return [...prev, createdTask];
+            });
+          } else {
+            // If getTask fails, trigger a refresh by fetching all tasks
+            tasksAPI.getTasks().then(fetchedTasks => {
+              setTasks(fetchedTasks);
+            }).catch(err => {
+              console.error('Error fetching tasks after creation:', err);
+            });
+          }
+        } catch (fetchError) {
+          console.error('Error fetching created task:', fetchError);
+          // Fallback: trigger refresh by fetching all tasks
+          tasksAPI.getTasks().then(fetchedTasks => {
+            setTasks(fetchedTasks);
+          }).catch(err => {
+            console.error('Error fetching all tasks:', err);
+          });
+        }
       } catch (error) {
         console.error('Error creating task:', error);
         // Fallback to local state (use original member IDs for localStorage)
