@@ -182,10 +182,14 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: Task 
         createdById: user.id,
         subtasks: {
           create: Array.isArray(taskData.subtasks)
-            ? taskData.subtasks.map((st: { title?: unknown; completed?: unknown }) => ({
-                title: typeof st.title === 'string' ? st.title : '',
-                completed: typeof st.completed === 'boolean' ? st.completed : false,
-              }))
+            ? taskData.subtasks
+                .filter((st): st is { title?: unknown; completed?: unknown } => 
+                  st !== null && typeof st === 'object'
+                )
+                .map((st) => ({
+                  title: typeof st.title === 'string' ? st.title.trim() : '',
+                  completed: typeof st.completed === 'boolean' ? st.completed : false,
+                }))
             : [],
         },
         assignments: {

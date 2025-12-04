@@ -84,17 +84,17 @@ export async function GET(
           return [];
         }
       })(),
-      subtasks: task.subtasks.map((st) => ({
+      subtasks: (task.subtasks || []).map((st) => ({
         id: st.id,
-        title: st.title,
-        completed: st.completed,
+        title: st.title || '',
+        completed: st.completed || false,
         createdAt: st.createdAt.toISOString(),
         updatedAt: st.updatedAt.toISOString(),
       })),
-      completed: task.completed,
+      completed: task.completed || false,
       createdAt: task.createdAt.toISOString(),
       updatedAt: task.updatedAt.toISOString(),
-      assignedTo: task.assignments.map((a) => a.userId),
+      assignedTo: (task.assignments || []).map((a) => a.userId).filter((id): id is string => !!id),
       createdBy: task.createdById,
     };
 

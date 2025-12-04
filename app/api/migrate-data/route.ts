@@ -81,10 +81,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
               completed: task.completed || false,
               createdById: user.id, // Assign to current user
               subtasks: {
-                create: (task.subtasks || []).map((st) => ({
-                  title: st.title || '',
-                  completed: st.completed || false,
-                })),
+                create: Array.isArray(task.subtasks)
+                  ? task.subtasks
+                      .filter((st): st is { title?: string; completed?: boolean } => 
+                        st !== null && typeof st === 'object'
+                      )
+                      .map((st) => ({
+                        title: (typeof st.title === 'string' ? st.title.trim() : '') || '',
+                        completed: typeof st.completed === 'boolean' ? st.completed : false,
+                      }))
+                  : [],
               },
               assignments: {
                 create: [
