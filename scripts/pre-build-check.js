@@ -95,18 +95,6 @@ async function checkAndMarkMigrations() {
       console.log('⚠️  Could not check for failed migrations:', error.message);
     }
 
-    // Check which tables exist (do this first to use in failed migration resolution)
-    const tables = await prisma.$queryRaw`
-      SELECT tablename 
-      FROM pg_tables 
-      WHERE schemaname = 'public' 
-        AND tablename IN ('User', 'Task', 'Subtask', 'TaskAssignment', 'MemberProfile', '_prisma_migrations')
-      ORDER BY tablename
-    `;
-
-    const existingTables = tables.map(t => t.tablename);
-    console.log(`📊 Found tables: ${existingTables.join(', ')}`);
-
     const requiredTables = ['User', 'Task', 'Subtask', 'TaskAssignment'];
     const allRequiredExist = requiredTables.every(table => existingTables.includes(table));
     const memberProfileExists = existingTables.includes('MemberProfile');
