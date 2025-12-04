@@ -3,10 +3,11 @@
  */
 
 import { NextResponse } from 'next/server';
+import { SESSION_CONFIG } from '../constants';
 import type { SessionData } from '../types/auth';
 
-export const SESSION_COOKIE_NAME = 'task_manager_session';
-export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+export const SESSION_COOKIE_NAME = SESSION_CONFIG.COOKIE_NAME;
+export const SESSION_DURATION_MS = SESSION_CONFIG.DURATION_MS;
 
 /**
  * Creates a secure session cookie
