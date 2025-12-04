@@ -281,15 +281,21 @@ export async function PUT(
     }
 
     // Transform to frontend format
-    const transformedTask = {
+    const transformedTask: Task = {
       id: updatedTask.id,
       title: updatedTask.title,
       description: updatedTask.description || undefined,
       ownerId: updatedTask.createdById,
-      priority: updatedTask.priority,
-      status: updatedTask.status,
+      priority: updatedTask.priority as Priority,
+      status: updatedTask.status as TaskStatus,
       dueDate: updatedTask.dueDate ? updatedTask.dueDate.toISOString() : new Date().toISOString(),
-      tags: updatedTask.tags ? JSON.parse(updatedTask.tags) : [],
+      tags: (() => {
+        try {
+          return updatedTask.tags ? JSON.parse(updatedTask.tags) : [];
+        } catch {
+          return [];
+        }
+      })(),
       subtasks: updatedTask.subtasks.map((st) => ({
         id: st.id,
         title: st.title,
