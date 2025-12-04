@@ -139,20 +139,27 @@ export const tasksAPI = {
   ): (() => void) => {
     const fetchAndCallback = async () => {
       try {
-        const res = await fetch(API_ENDPOINTS.TASKS || '/api/tasks');
+        const res = await fetch(API_ENDPOINTS.TASKS || '/api/tasks', {
+          credentials: 'include', // Include cookies for session
+        });
         if (!res.ok) {
-          throw new Error('Failed to fetch tasks');
+          const errorText = await res.text();
+          console.error(`[subscribeToTasks] Failed to fetch tasks: ${res.status} ${errorText}`);
+          throw new Error(`Failed to fetch tasks: ${res.status}`);
         }
         const data = (await res.json()) as { tasks: Task[] };
         // Backend already filters by user.id, so we get all tasks for the logged-in user
+        console.log(`[subscribeToTasks] Fetched ${data.tasks.length} tasks from API`);
         callback(data.tasks);
       } catch (error) {
-        console.error('Error fetching tasks:', error);
-        // Fallback to localStorage
+        console.error('[subscribeToTasks] Error fetching tasks:', error);
+        // Fallback to localStorage only if user is not logged in
+        // If logged in, don't use localStorage to avoid showing stale data
         let tasks = storage.getTasks();
         if (filter?.assignedTo) {
           tasks = tasks.filter(t => t.assignedTo?.includes(filter.assignedTo!));
         }
+        console.warn(`[subscribeToTasks] Using ${tasks.length} tasks from localStorage (fallback)`);
         callback(tasks);
       }
     };
