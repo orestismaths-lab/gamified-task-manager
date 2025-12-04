@@ -104,7 +104,7 @@ export const membersAPI = {
     }
     
     try {
-      const updateData: { name?: string; avatar?: string } = {};
+      const updateData: { name?: string; avatar?: string | null } = {};
       if (updates.name && typeof updates.name === 'string') {
         const trimmedName = updates.name.trim();
         if (trimmedName.length === 0) {
