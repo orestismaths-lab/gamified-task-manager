@@ -541,24 +541,8 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         console.error('Error updating member:', error);
         throw error; // Re-throw to show error to user
       }
-      return;
-    }
-    
-    // For non-logged-in users, update in localStorage
-    if (user?.id) {
-      // Update in backend API
-      try {
-        await membersAPI.updateMember(id, updates);
-        // Real-time listener will update state automatically
-      } catch (error) {
-        console.error('Error updating member:', error);
-        // Fallback to local state
-        setMembers(prev => prev.map(member =>
-          member.id === id ? { ...member, ...updates } : member
-        ));
-      }
     } else {
-      // Update in localStorage
+      // For non-logged-in users, update in localStorage
       setMembers(prev => prev.map(member =>
         member.id === id ? { ...member, ...updates } : member
       ));
