@@ -70,7 +70,30 @@ async function checkAndMarkMigrations() {
 
     if (!allRequiredExist) {
       const missing = requiredTables.filter(t => !existingTables.includes(t));
-      console.log(`⚠️  Missing tables: ${missing.join(', ')}. Migrations will run normally.`);
+      console.log(`⚠️  Missing tables: ${missing.join(', ')}`);
+      
+      // If we have User and Task but missing Subtask/TaskAssignment, 
+      // the migration partially ran - mark it as applied and let it continue
+      if (existingTables.includes('User') && existingTables.includes('Task')) {
+        console.log('⚠️  Some tables exist but not all. This might be a partial migration.');
+        console.log('⚠️  Will try to resolve failed migration and let Prisma handle the rest.');
+        
+        // Try to resolve the failed migration
+        try {
+          await prisma.$executeRaw`
+            UPDATE "_prisma_migrations" 
+            SET rolled_back_at = NOW() 
+            WHERE migration_name = '20251204000000_init_postgres' 
+              AND finished_at IS NULL 
+              AND rolled_back_at IS NULL
+          `;
+          console.log('✅ Resolved failed migration 20251204000000_init_postgres');
+        } catch (error) {
+          console.log('⚠️  Could not resolve migration:', error.message);
+        }
+      }
+      
+      console.log('⚠️  Migrations will run normally to create missing tables.');
       return;
     }
 
