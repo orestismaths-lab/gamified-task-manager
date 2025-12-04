@@ -251,8 +251,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: Task 
       createdBy: task.createdById,
     };
 
-    // Debug logging
-    console.log(`[POST /api/tasks] Created task "${transformedTask.title}" with ID ${transformedTask.id}, assignedTo: ${transformedTask.assignedTo.join(', ')}`);
+    // Task created successfully
 
     return NextResponse.json({ task: transformedTask }, { status: 201 });
   } catch (error) {
