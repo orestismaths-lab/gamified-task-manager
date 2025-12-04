@@ -78,9 +78,38 @@ npx prisma migrate deploy
 - Βεβαιώσου ότι το connection string είναι σωστό
 - Αν χρησιμοποιείς Neon, βεβαιώσου ότι το **IP Allowlist** επιτρέπει connections από Vercel
 
-### "Relation does not exist"
-- Τρέξε migrations: `npx prisma migrate deploy`
-- Ή κάνε **Redeploy** στο Vercel (θα τρέξει migrations αυτόματα)
+### "Relation does not exist" ή "table does not exist"
+Το migration δεν έχει τρέξει. Έχεις 2 επιλογές:
+
+#### Επιλογή A: API Endpoint (Εύκολο) ⭐
+1. **Πρόσθεσε `MIGRATE_SECRET` στο Vercel:**
+   - Vercel Dashboard → Settings → Environment Variables
+   - Name: `MIGRATE_SECRET`
+   - Value: ένα random string (π.χ. `my-secret-key-123`)
+   - Environment: Production
+
+2. **Κάνε POST request:**
+   ```bash
+   curl -X POST https://your-app.vercel.app/api/migrate \
+     -H "Authorization: Bearer your-secret-key"
+   ```
+   
+   Ή από browser console:
+   ```javascript
+   fetch('/api/migrate', {
+     method: 'POST',
+     headers: { 'Authorization': 'Bearer your-secret-key' }
+   }).then(r => r.json()).then(console.log)
+   ```
+
+#### Επιλογή B: Vercel CLI
+```bash
+npm i -g vercel
+vercel login
+cd task_manager
+vercel link
+npx prisma migrate deploy
+```
 
 ## 📚 Πηγές
 
