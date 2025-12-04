@@ -27,3 +27,14 @@ export const API_CONFIG = {
   MAX_REQUEST_SIZE: 1024 * 1024, // 1MB
 } as const;
 
+export const API_ENDPOINTS = {
+  LOGIN: '/api/auth/login',
+  REGISTER: '/api/auth/register',
+  LOGOUT: '/api/auth/logout',
+  ME: '/api/auth/me',
+  ADMIN_USERS: '/api/admin/users',
+  MEMBERS: '/api/members',
+  TASKS: '/api/tasks',
+  MIGRATE: '/api/migrate',
+} as const;
+

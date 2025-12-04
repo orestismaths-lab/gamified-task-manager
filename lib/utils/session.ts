@@ -2,9 +2,10 @@
  * Session management utilities
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '../prisma';
 import { SESSION_CONFIG } from '../constants';
-import type { SessionData } from '../types/auth';
+import type { SessionData, UserPublic } from '../types/auth';
 
 export const SESSION_COOKIE_NAME = SESSION_CONFIG.COOKIE_NAME;
 export const SESSION_DURATION_MS = SESSION_CONFIG.DURATION_MS;
@@ -31,10 +32,27 @@ export function getSessionCookieConfig() {
 }
 
 /**
- * Generates a secure session token
+ * Generates a secure session token with encoded userId
+ * Format: base64(userId:timestamp:random)
  */
-export function generateSessionToken(): string {
-  return crypto.randomUUID();
+export function generateSessionToken(userId: string): string {
+  const timestamp = Date.now();
+  const random = crypto.randomUUID();
+  const tokenData = `${userId}:${timestamp}:${random}`;
+  return Buffer.from(tokenData).toString('base64');
+}
+
+/**
+ * Decodes session token to get userId
+ */
+export function decodeSessionToken(token: string): string | null {
+  try {
+    const decoded = Buffer.from(token, 'base64').toString('utf-8');
+    const [userId] = decoded.split(':');
+    return userId || null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -52,5 +70,42 @@ export function clearSessionCookie(response: NextResponse): void {
     ...getSessionCookieConfig(),
     maxAge: 0,
   });
+}
+
+/**
+ * Retrieves the authenticated user from the session cookie.
+ * Reads the session cookie and decodes the userId, then fetches user from DB.
+ */
+export async function getSessionUser(req: NextRequest): Promise<UserPublic | null> {
+  try {
+    const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME);
+    
+    if (!sessionCookie || !sessionCookie.value) {
+      return null;
+    }
+
+    // Decode userId from session token
+    const userId = decodeSessionToken(sessionCookie.value);
+    
+    if (!userId) {
+      return null;
+    }
+
+    // Fetch user from database
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+      },
+    });
+
+    return user;
+  } catch (error) {
+    console.error('getSessionUser error:', error);
+    return null;
+  }
 }
 

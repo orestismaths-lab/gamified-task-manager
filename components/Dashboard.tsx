@@ -121,19 +121,19 @@ export function Dashboard() {
       {/* Main Content */}
       <div className="flex-1 overflow-x-hidden bg-gray-50 dark:bg-gray-900">
         {activeView === 'tasks' ? (
-          <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Header with Filters */}
-        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
               Task Manager
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">Stay organized, level up! 🎮</p>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">Stay organized, level up! 🎮</p>
           </div>
 
-          <div className="flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-4 flex-wrap w-full sm:w-auto">
             {/* Search Bar */}
-            <div className="flex-1 min-w-[200px] max-w-md relative">
+            <div className="flex-1 min-w-[150px] sm:min-w-[200px] max-w-full sm:max-w-md relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"

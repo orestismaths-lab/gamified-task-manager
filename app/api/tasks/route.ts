@@ -1,0 +1,211 @@
+/**
+ * Tasks API Route
+ * Handles task CRUD operations
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { handleDatabaseError, handleValidationError, logError } from '@/lib/utils/errors';
+import { getSessionUser } from '@/lib/utils/session';
+import type { UserPublic } from '@/lib/types/auth';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * GET /api/tasks
+ * Returns all tasks for the authenticated user (created by or assigned to)
+ */
+export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: any[] } | { error: string; details?: string }>> {
+  try {
+    const user = await getSessionUser(req);
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Get tasks created by user or assigned to user
+    const tasks = await prisma.task.findMany({
+      where: {
+        OR: [
+          { createdById: user.id },
+          {
+            assignments: {
+              some: {
+                userId: user.id,
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        assignments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
+            },
+          },
+        },
+        subtasks: true,
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Transform to frontend format
+    const transformedTasks = tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || undefined,
+      ownerId: task.createdById, // Legacy field
+      priority: task.priority,
+      status: task.status,
+      dueDate: task.dueDate ? task.dueDate.toISOString() : new Date().toISOString(),
+      tags: task.tags ? JSON.parse(task.tags) : [],
+      subtasks: task.subtasks.map((st) => ({
+        id: st.id,
+        title: st.title,
+        completed: st.completed,
+        createdAt: st.createdAt.toISOString(),
+        updatedAt: st.updatedAt.toISOString(),
+      })),
+      completed: task.completed,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+      assignedTo: task.assignments.map((a) => a.userId),
+      createdBy: task.createdById,
+    }));
+
+    return NextResponse.json({ tasks: transformedTasks });
+  } catch (error) {
+    logError('Tasks API - GET', error);
+    return handleDatabaseError(error, 'Failed to fetch tasks');
+  }
+}
+
+/**
+ * POST /api/tasks
+ * Creates a new task
+ */
+export async function POST(req: NextRequest): Promise<NextResponse<{ task: any } | { error: string; details?: string }>> {
+  try {
+    const user = await getSessionUser();
+    
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return handleValidationError(['Invalid request body']);
+    }
+
+    const taskData = body as {
+      title?: unknown;
+      description?: unknown;
+      priority?: unknown;
+      status?: unknown;
+      dueDate?: unknown;
+      tags?: unknown;
+      subtasks?: unknown;
+      assignedTo?: unknown;
+    };
+
+    if (!taskData.title || typeof taskData.title !== 'string' || taskData.title.trim().length === 0) {
+      return handleValidationError(['Task title is required']);
+    }
+
+    // Create task with assignments
+    const task = await prisma.task.create({
+      data: {
+        title: taskData.title.trim(),
+        description: typeof taskData.description === 'string' ? taskData.description : null,
+        priority: (taskData.priority as string) || 'medium',
+        status: (taskData.status as string) || 'todo',
+        dueDate: taskData.dueDate ? new Date(taskData.dueDate as string) : null,
+        tags: taskData.tags ? JSON.stringify(taskData.tags) : '[]',
+        completed: taskData.status === 'completed',
+        createdById: user.id,
+        subtasks: {
+          create: Array.isArray(taskData.subtasks)
+            ? taskData.subtasks.map((st: any) => ({
+                title: st.title || '',
+                completed: st.completed || false,
+              }))
+            : [],
+        },
+        assignments: {
+          create: Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0
+            ? taskData.assignedTo.map((userId: string) => ({
+                userId,
+              }))
+            : [{ userId: user.id }], // Default: assign to creator
+        },
+      },
+      include: {
+        assignments: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                name: true,
+              },
+            },
+          },
+        },
+        subtasks: true,
+        createdBy: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Transform to frontend format
+    const transformedTask = {
+      id: task.id,
+      title: task.title,
+      description: task.description || undefined,
+      ownerId: task.createdById,
+      priority: task.priority,
+      status: task.status,
+      dueDate: task.dueDate ? task.dueDate.toISOString() : new Date().toISOString(),
+      tags: task.tags ? JSON.parse(task.tags) : [],
+      subtasks: task.subtasks.map((st) => ({
+        id: st.id,
+        title: st.title,
+        completed: st.completed,
+        createdAt: st.createdAt.toISOString(),
+        updatedAt: st.updatedAt.toISOString(),
+      })),
+      completed: task.completed,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+      assignedTo: task.assignments.map((a) => a.userId),
+      createdBy: task.createdById,
+    };
+
+    return NextResponse.json({ task: transformedTask }, { status: 201 });
+  } catch (error) {
+    logError('Tasks API - POST', error);
+    return handleDatabaseError(error, 'Failed to create task');
+  }
+}
+

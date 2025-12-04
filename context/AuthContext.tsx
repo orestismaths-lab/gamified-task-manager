@@ -31,22 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(apiUser);
       
       if (apiUser) {
-        // Load or create member profile
+        // Load member profile (don't create automatically - user must select during sign up)
         try {
-          let userMember = await membersAPI.getMemberByUserId(apiUser.id);
-          
-          if (!userMember) {
-            // Create member profile if doesn't exist
-            const memberId = await membersAPI.createMember({
-              name: apiUser.name || apiUser.email.split('@')[0] || 'User',
-              email: apiUser.email,
-            }, apiUser.id);
-            
-            userMember = await membersAPI.getMember(memberId);
-          }
+          const userMember = await membersAPI.getMemberByUserId(apiUser.id);
           
           if (isMounted) {
-            setMember(userMember);
+            setMember(userMember || null);
           }
         } catch (error) {
           console.error('Error loading member:', error);

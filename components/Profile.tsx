@@ -33,28 +33,28 @@ export function Profile() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4 sm:p-6 text-white">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm flex-shrink-0">
                 {member?.avatar ? (
-                  <span className="text-3xl">{member.avatar}</span>
+                  <span className="text-2xl sm:text-3xl">{member.avatar}</span>
                 ) : (
-                  <User className="w-8 h-8" />
+                  <User className="w-6 h-6 sm:w-8 sm:h-8" />
                 )}
               </div>
-              <div>
-                <h1 className="text-3xl font-bold">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-3xl font-bold truncate">
                   {member?.name || user?.name || 'User'}
                 </h1>
-                <p className="text-purple-100 text-sm mt-1">
+                <p className="text-purple-100 text-xs sm:text-sm mt-1 truncate">
                   {user?.email || 'No email'}
                 </p>
               </div>
@@ -63,16 +63,16 @@ export function Profile() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={handleSignOut}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors flex items-center gap-2"
+              className="px-3 py-2 sm:px-4 sm:py-2 bg-white/20 hover:bg-white/30 rounded-lg backdrop-blur-sm transition-colors flex items-center gap-2 w-full sm:w-auto justify-center"
             >
-              <LogOut className="w-5 h-5" />
-              <span>Sign Out</span>
+              <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">Sign Out</span>
             </motion.button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Authentication Status */}
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4">
             <div className="flex items-center gap-3">
@@ -131,7 +131,7 @@ export function Profile() {
                   Gamification Stats
                 </h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
                   <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
                     <div className="flex items-center gap-2 mb-2">
                       <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
@@ -195,7 +195,7 @@ export function Profile() {
               Task Statistics
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
                 <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-1">
                   Total Tasks

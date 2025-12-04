@@ -66,32 +66,26 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     priority: 'all' as Priority | 'all',
     searchQuery: '',
   });
-  const [useFirestore, setUseFirestore] = useState(false);
-
   const { addXP, removeXP } = useGamification();
 
-  // Determine if we should use Firestore or localStorage
+  // Load data from API or localStorage
   useEffect(() => {
-    setUseFirestore(!!user);
-  }, [user]);
-
-  // Load data from Firestore or localStorage
-  useEffect(() => {
-    if (useFirestore && user?.id) {
-      // Use Firestore with real-time listeners
+    if (user?.id) {
+      // User is logged in - use API for members (all registered users)
       const unsubscribeTasks = tasksAPI.subscribeToTasks(
-        (firestoreTasks) => {
-          setTasks(firestoreTasks);
+        (apiTasks) => {
+          setTasks(apiTasks);
         },
         authMember?.id ? { assignedTo: authMember.id } : undefined
       );
 
-      const unsubscribeMembers = membersAPI.subscribeToMembers((firestoreMembers) => {
-        setMembers(firestoreMembers);
+      // Load members from API (all registered users for assignment)
+      const unsubscribeMembers = membersAPI.subscribeToMembers((apiMembers) => {
+        setMembers(apiMembers);
         // Auto-select auth member if exists (only once, not on every update)
         setSelectedMemberId((currentSelectedId) => {
           if (authMember && !currentSelectedId) {
-            const memberInList = firestoreMembers.find(m => m.userId === authMember.userId);
+            const memberInList = apiMembers.find(m => m.userId === authMember.userId || m.id === authMember.id);
             if (memberInList) {
               return memberInList.id;
             }
@@ -105,7 +99,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         unsubscribeMembers();
       };
     } else {
-      // Use localStorage (fallback or not logged in)
+      // Not logged in - use localStorage (fallback)
       const loadedTasks = storage.getTasks();
       const loadedMembers = storage.getMembers();
       const loadedSelectedMember = storage.getSelectedMemberId();
@@ -146,7 +140,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useFirestore, user?.id, authMember?.id]);
+  }, [user?.id, authMember?.id]);
 
   // Debounced save functions to avoid excessive localStorage writes
   const debouncedSaveTasks = useMemo(

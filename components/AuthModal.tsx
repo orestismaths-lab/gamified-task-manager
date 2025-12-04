@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, LogIn } from 'lucide-react';
+import { X, Mail, Lock, User, LogIn, Users, Plus } from 'lucide-react';
 import { authAPI } from '@/lib/api/auth';
+import { membersAPI } from '@/lib/api/members';
+import type { Member } from '@/types';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -11,32 +13,106 @@ interface AuthModalProps {
   onSuccess: () => void;
 }
 
+type AuthStep = 'login' | 'register' | 'selectMember';
+
 export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
-  const [isLogin, setIsLogin] = useState(true);
+  const [step, setStep] = useState<AuthStep>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Member selection state
+  const [members, setMembers] = useState<Member[]>([]);
+  const [selectedMemberId, setSelectedMemberId] = useState<string>('');
+  const [newMemberName, setNewMemberName] = useState('');
+  const [createNewMember, setCreateNewMember] = useState(false);
+  const [memberLoading, setMemberLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Load members when entering member selection step
+  useEffect(() => {
+    if (step === 'selectMember') {
+      loadMembers();
+    }
+  }, [step]);
+
+  const loadMembers = async () => {
+    try {
+      const allMembers = await membersAPI.getMembers();
+      setMembers(allMembers);
+    } catch (err) {
+      console.error('Error loading members:', err);
+    }
+  };
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      if (isLogin) {
+      if (step === 'login') {
         await authAPI.signIn(email, password);
+        onSuccess();
+        onClose();
       } else {
+        // Register user
         await authAPI.register(email, password, displayName);
+        // Move to member selection step
+        setStep('selectMember');
       }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMemberSelection = async () => {
+    setError('');
+    setMemberLoading(true);
+
+    try {
+      if (createNewMember) {
+        if (!newMemberName.trim()) {
+          setError('Please enter a member name');
+          setMemberLoading(false);
+          return;
+        }
+        // Get current user to create member with userId
+        const currentUser = await authAPI.getCurrentUser();
+        if (!currentUser) {
+          setError('User not found. Please try logging in again.');
+          setMemberLoading(false);
+          return;
+        }
+        // Create new member
+        const memberId = await membersAPI.createMember(
+          {
+            name: newMemberName.trim(),
+            email: currentUser.email,
+          },
+          currentUser.id
+        );
+        setSelectedMemberId(memberId);
+      }
+
+      if (!selectedMemberId) {
+        setError('Please select or create a member');
+        setMemberLoading(false);
+        return;
+      }
+
+      // Member is now linked to user (via userId in member)
       onSuccess();
       onClose();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       setError(errorMessage);
     } finally {
-      setLoading(false);
+      setMemberLoading(false);
     }
   };
 
@@ -54,7 +130,9 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 text-white">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold">
-                {isLogin ? 'Welcome Back!' : 'Create Account'}
+                {step === 'login' && 'Welcome Back!'}
+                {step === 'register' && 'Create Account'}
+                {step === 'selectMember' && 'Select Your Member Profile'}
               </h2>
               <button
                 onClick={onClose}
@@ -65,14 +143,113 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {step === 'selectMember' ? (
+            <div className="p-6 space-y-4">
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-4">
+                <p className="text-gray-600 dark:text-gray-400 text-sm">
+                  Select an existing member profile or create a new one to link with your account.
+                </p>
+
+                {/* Existing Members */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <Users className="w-4 h-4 inline mr-2" />
+                    Select Existing Member
+                  </label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {members.map((member) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedMemberId(member.id);
+                          setCreateNewMember(false);
+                        }}
+                        className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-colors ${
+                          selectedMemberId === member.id && !createNewMember
+                            ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                            : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600'
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-900 dark:text-gray-100">
+                          {member.name}
+                        </div>
+                        {member.email && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {member.email}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white dark:bg-gray-800 text-gray-500">OR</span>
+                  </div>
+                </div>
+
+                {/* Create New Member */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreateNewMember(true);
+                      setSelectedMemberId('');
+                    }}
+                    className={`w-full px-4 py-3 rounded-xl border-2 transition-colors flex items-center gap-2 ${
+                      createNewMember
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600'
+                    }`}
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span className="font-semibold">Create New Member</span>
+                  </button>
+
+                  {createNewMember && (
+                    <div className="mt-3">
+                      <input
+                        type="text"
+                        value={newMemberName}
+                        onChange={(e) => setNewMemberName(e.target.value)}
+                        placeholder="Enter member name"
+                        className="w-full px-4 py-2 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 dark:focus:border-purple-500 focus:outline-none"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleMemberSelection}
+                  disabled={memberLoading}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {memberLoading ? 'Please wait...' : 'Continue'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleAuthSubmit} className="p-6 space-y-4">
             {error && (
               <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
 
-            {!isLogin && (
+            {step === 'register' && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   <User className="w-4 h-4 inline mr-2" />
@@ -83,7 +260,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   className="w-full px-4 py-2 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 dark:focus:border-purple-500 focus:outline-none"
-                  required={!isLogin}
+                  required
                 />
               </div>
             )}
@@ -123,7 +300,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
               className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <LogIn className="w-5 h-5" />
-              {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Sign Up')}
+              {loading ? 'Please wait...' : (step === 'login' ? 'Sign In' : 'Sign Up')}
             </button>
 
             <div className="relative">
@@ -136,12 +313,12 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
             </div>
 
             <div className="text-center text-sm text-gray-600 dark:text-gray-400 mt-2">
-              {isLogin ? (
+              {step === 'login' ? (
                 <>
                   Don&apos;t have an account?{' '}
                   <button
                     type="button"
-                    onClick={() => setIsLogin(false)}
+                    onClick={() => setStep('register')}
                     className="text-purple-600 dark:text-purple-400 hover:underline font-semibold"
                   >
                     Sign Up
@@ -152,7 +329,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                   Already have an account?{' '}
                   <button
                     type="button"
-                    onClick={() => setIsLogin(true)}
+                    onClick={() => setStep('login')}
                     className="text-purple-600 dark:text-purple-400 hover:underline font-semibold"
                   >
                     Sign In
@@ -161,6 +338,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
               )}
             </div>
           </form>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>

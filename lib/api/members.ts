@@ -1,12 +1,25 @@
-// Members API - Using localStorage (Firebase disabled)
+// Members API - Using backend API for multi-user support
 
 import { Member } from '@/types';
 import { storage } from '@/lib/storage';
+import { API_ENDPOINTS } from '@/lib/constants';
 
 export const membersAPI = {
-  // Get all members
+  // Get all members from backend API (all registered users)
   getMembers: async (): Promise<Member[]> => {
-    return storage.getMembers();
+    try {
+      const res = await fetch(API_ENDPOINTS.MEMBERS);
+      if (!res.ok) {
+        console.error('Failed to fetch members from API, falling back to localStorage');
+        return storage.getMembers();
+      }
+      const data = (await res.json()) as { members: Member[] };
+      return data.members;
+    } catch (error) {
+      console.error('Error fetching members from API:', error);
+      // Fallback to localStorage for offline support
+      return storage.getMembers();
+    }
   },
 
   // Get single member
@@ -76,16 +89,30 @@ export const membersAPI = {
     storage.saveMembers(filtered);
   },
 
-  // Real-time listener (simplified - just return current members)
+  // Real-time listener (simplified - polls API every 2 seconds)
   subscribeToMembers: (callback: (members: Member[]) => void): (() => void) => {
-    // Call immediately with current members
-    const members = storage.getMembers();
-    callback(members);
+    // Helper function to fetch members
+    const fetchMembers = async () => {
+      try {
+        const res = await fetch(API_ENDPOINTS.MEMBERS);
+        if (!res.ok) {
+          throw new Error('Failed to fetch members');
+        }
+        const data = (await res.json()) as { members: Member[] };
+        return data.members;
+      } catch (error) {
+        console.error('Error fetching members:', error);
+        // Fallback to localStorage on error
+        return storage.getMembers();
+      }
+    };
+
+    // Call immediately with current members from API
+    fetchMembers().then(callback);
     
-    // Poll every 2 seconds for changes (simplified real-time)
+    // Poll every 2 seconds for changes
     const interval = setInterval(() => {
-      const currentMembers = storage.getMembers();
-      callback(currentMembers);
+      fetchMembers().then(callback);
     }, 2000);
     
     return () => clearInterval(interval);

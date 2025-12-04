@@ -85,8 +85,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<AuthResponse 
       return handleAuthError('Invalid email or password');
     }
 
-    // Create session
-    const sessionToken = generateSessionToken();
+    // Create session with encoded userId
+    const sessionToken = generateSessionToken(user.id);
     const response = NextResponse.json({
       user: {
         id: user.id,
