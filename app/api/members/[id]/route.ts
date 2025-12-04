@@ -108,6 +108,22 @@ export async function PUT(
       updateData.avatar = avatar || null;
     }
 
+    // Check if MemberProfile exists, create if not
+    const existingProfile = await prisma.memberProfile.findUnique({
+      where: { userId: params.id },
+    });
+
+    if (!existingProfile) {
+      // Create MemberProfile if it doesn't exist
+      await prisma.memberProfile.create({
+        data: {
+          userId: params.id,
+          xp: 0,
+          level: 1,
+        },
+      });
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: params.id },
       data: updateData,

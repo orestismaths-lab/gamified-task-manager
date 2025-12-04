@@ -24,12 +24,14 @@ import { triggerConfetti } from '@/lib/confetti';
 import { setupNotificationCheck } from '@/lib/notifications';
 import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from './AuthModal';
+import { MemberSelectionModal } from './MemberSelectionModal';
 
 type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export' | 'profile';
 
 export function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, member, loading: authLoading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showMemberSelectionModal, setShowMemberSelectionModal] = useState(false);
   const [activeView, setActiveView] = useState<ViewType>('tasks');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
   const {
@@ -50,6 +52,15 @@ export function Dashboard() {
       setShowAuthModal(true);
     }
   }, [user, authLoading]);
+
+  // Show member selection modal if logged in but no member profile
+  useEffect(() => {
+    if (!authLoading && user && !member) {
+      setShowMemberSelectionModal(true);
+    } else {
+      setShowMemberSelectionModal(false);
+    }
+  }, [user, member, authLoading]);
 
   const [showFilters, setShowFilters] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -114,6 +125,12 @@ export function Dashboard() {
           if (user) setShowAuthModal(false);
         }}
         onSuccess={() => setShowAuthModal(false)}
+      />
+      <MemberSelectionModal
+        isOpen={showMemberSelectionModal}
+        onComplete={() => {
+          setShowMemberSelectionModal(false);
+        }}
       />
       <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
         {/* Burger Menu */}
