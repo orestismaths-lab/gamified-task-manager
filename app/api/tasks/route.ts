@@ -216,15 +216,21 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: Task 
     });
 
     // Transform to frontend format
-    const transformedTask = {
+    const transformedTask: Task = {
       id: task.id,
       title: task.title,
       description: task.description || undefined,
       ownerId: task.createdById,
-      priority: task.priority,
-      status: task.status,
+      priority: task.priority as Priority,
+      status: task.status as TaskStatus,
       dueDate: task.dueDate ? task.dueDate.toISOString() : new Date().toISOString(),
-      tags: task.tags ? JSON.parse(task.tags) : [],
+      tags: (() => {
+        try {
+          return task.tags ? JSON.parse(task.tags) : [];
+        } catch {
+          return [];
+        }
+      })(),
       subtasks: task.subtasks.map((st) => ({
         id: st.id,
         title: st.title,
