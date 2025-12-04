@@ -27,9 +27,17 @@ export const authAPI = {
       try {
         const data = (await res.json()) as { error?: string; details?: string };
         errorMessage = data.error || data.details || 'Login failed';
+        // Log full error for debugging
+        console.error('Login error response:', {
+          status: res.status,
+          error: data.error,
+          details: data.details,
+          fullData: data,
+        });
       } catch (e) {
         // If response is not JSON, use status text
         errorMessage = res.statusText || 'Login failed';
+        console.error('Login error - failed to parse JSON:', e);
       }
       throw new Error(errorMessage);
     }
