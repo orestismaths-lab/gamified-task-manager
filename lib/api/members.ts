@@ -1,61 +1,93 @@
-// Members API - Using backend API for multi-user support
+// Members API - Using backend API for database storage
 
 import { Member } from '@/types';
 import { storage } from '@/lib/storage';
 import { API_ENDPOINTS } from '@/lib/constants';
 
 export const membersAPI = {
-  // Get all members: users from API + members from localStorage (without userId)
+  // Get all members from database (NO localStorage fallback when logged in)
   getMembers: async (): Promise<Member[]> => {
     try {
-      const res = await fetch(API_ENDPOINTS.MEMBERS);
+      const res = await fetch(API_ENDPOINTS.MEMBERS, {
+        credentials: 'include', // Include cookies for session
+      });
       if (!res.ok) {
-        console.error('Failed to fetch members from API, falling back to localStorage');
-        return storage.getMembers();
+        const errorText = await res.text();
+        console.error(`[getMembers] Failed to fetch members: ${res.status} ${errorText}`);
+        throw new Error(`Failed to fetch members: ${res.status}`);
       }
       const data = (await res.json()) as { members: Member[] };
-      const apiMembers = data.members;
-      
-      // Get members from localStorage (may include members without userId)
-      const localMembers = storage.getMembers();
-      
-      // Merge: API members (users with userId) + local members without userId
-      const apiMemberIds = new Set(apiMembers.map(m => m.id));
-      const membersWithoutUserId = localMembers.filter(m => !m.userId || !apiMemberIds.has(m.id));
-      
-      // Combine: API members + local members that don't have userId or aren't in API
-      return [...apiMembers, ...membersWithoutUserId];
+      console.log(`[getMembers] Fetched ${data.members.length} members from database`);
+      return data.members;
     } catch (error) {
-      console.error('Error fetching members from API:', error);
-      // Fallback to localStorage for offline support
-      return storage.getMembers();
+      console.error('[getMembers] Error fetching members from API:', error);
+      // NO localStorage fallback - throw error instead
+      throw error;
     }
   },
 
-  // Get single member
+  // Get single member from database
   getMember: async (memberId: string): Promise<Member | null> => {
-    const members = storage.getMembers();
-    return members.find(m => m.id === memberId) || null;
+    try {
+      const res = await fetch(API_ENDPOINTS.MEMBER_BY_ID(memberId), {
+        credentials: 'include', // Include cookies for session
+      });
+      if (!res.ok) {
+        console.error(`[getMember] Failed to fetch member ${memberId}: ${res.status}`);
+        return null;
+      }
+      const data = (await res.json()) as { member: Member };
+      return data.member;
+    } catch (error) {
+      console.error(`[getMember] Error fetching member ${memberId}:`, error);
+      return null;
+    }
   },
 
-  // Get member by userId
+  // Get member by userId (same as getMember since userId === memberId)
   getMemberByUserId: async (userId: string): Promise<Member | null> => {
-    const members = storage.getMembers();
-    return members.find(m => m.userId === userId) || null;
+    return membersAPI.getMember(userId);
   },
 
-  // Create member (userId is optional - allows creating members without user accounts)
+  // Create member - members are now users, so this is only for updating user profile
+  // For creating new users, use auth/register endpoint
   createMember: async (member: Omit<Member, 'id' | 'xp' | 'level'>, userId?: string): Promise<string> => {
     if (!member.name || member.name.trim().length === 0) {
       throw new Error('Member name is required');
     }
     
+    // If userId is provided, update the user's profile
+    if (userId) {
+      try {
+        const res = await fetch(API_ENDPOINTS.MEMBER_BY_ID(userId), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: member.name.trim(),
+            avatar: member.avatar,
+          }),
+        });
+        
+        if (!res.ok) {
+          throw new Error('Failed to update member');
+        }
+        
+        const data = (await res.json()) as { member: Member };
+        return data.member.id;
+      } catch (error) {
+        console.error('[createMember] Error updating member:', error);
+        throw error;
+      }
+    }
+    
+    // If no userId, this is a legacy case - members must be users now
+    // Fallback to localStorage only for non-logged-in users
     const members = storage.getMembers();
     const newMember: Member = {
       ...member,
       id: `member-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: member.name.trim(),
-      userId: userId || undefined, // Optional - allows members without user accounts
       xp: 0,
       level: 1,
     };
@@ -65,62 +97,80 @@ export const membersAPI = {
     return newMember.id;
   },
 
-  // Update member
+  // Update member in database
   updateMember: async (memberId: string, updates: Partial<Member>): Promise<void> => {
     if (!memberId || memberId.trim().length === 0) {
       throw new Error('Member ID is required');
     }
     
-    const members = storage.getMembers();
-    const index = members.findIndex(m => m.id === memberId);
-    if (index === -1) {
-      throw new Error('Member not found');
-    }
-    
-    if (updates.name && typeof updates.name === 'string') {
-      const trimmedName = updates.name.trim();
-      if (trimmedName.length === 0) {
-        throw new Error('Member name cannot be empty');
+    try {
+      const updateData: { name?: string; avatar?: string } = {};
+      if (updates.name && typeof updates.name === 'string') {
+        const trimmedName = updates.name.trim();
+        if (trimmedName.length === 0) {
+          throw new Error('Member name cannot be empty');
+        }
+        updateData.name = trimmedName;
       }
-      updates.name = trimmedName;
+      if (updates.avatar !== undefined) {
+        updateData.avatar = updates.avatar || null;
+      }
+      
+      const res = await fetch(API_ENDPOINTS.MEMBER_BY_ID(memberId), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updateData),
+      });
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`[updateMember] Failed to update member: ${res.status} ${errorText}`);
+        throw new Error(`Failed to update member: ${res.status}`);
+      }
+    } catch (error) {
+      console.error('[updateMember] Error updating member:', error);
+      throw error;
     }
-    
-    members[index] = { ...members[index], ...updates };
-    storage.saveMembers(members);
   },
 
-  // Delete member
+  // Delete member - members are users, so deletion should be done via admin/users endpoint
+  // This is kept for backward compatibility but should not be used for logged-in users
   deleteMember: async (memberId: string): Promise<void> => {
+    // For logged-in users, members are users and should be deleted via admin endpoint
+    // For non-logged-in users, fallback to localStorage
     const members = storage.getMembers();
     const filtered = members.filter(m => m.id !== memberId);
     storage.saveMembers(filtered);
   },
 
-  // Real-time listener (simplified - polls API every 2 seconds)
+  // Real-time listener (polls API every 2 seconds)
   subscribeToMembers: (callback: (members: Member[]) => void): (() => void) => {
-    // Helper function to fetch members
     const fetchMembers = async () => {
       try {
-        const res = await fetch(API_ENDPOINTS.MEMBERS);
+        const res = await fetch(API_ENDPOINTS.MEMBERS, {
+          credentials: 'include', // Include cookies for session
+        });
         if (!res.ok) {
-          throw new Error('Failed to fetch members');
+          const errorText = await res.text();
+          console.error(`[subscribeToMembers] Failed to fetch members: ${res.status} ${errorText}`);
+          throw new Error(`Failed to fetch members: ${res.status}`);
         }
         const data = (await res.json()) as { members: Member[] };
-        return data.members;
+        console.log(`[subscribeToMembers] Fetched ${data.members.length} members from database`);
+        callback(data.members);
       } catch (error) {
-        console.error('Error fetching members:', error);
-        // Fallback to localStorage on error
-        return storage.getMembers();
+        console.error('[subscribeToMembers] Error fetching members:', error);
+        // NO localStorage fallback - return empty array instead
+        callback([]);
       }
     };
 
-    // Call immediately with current members from API
-    fetchMembers().then(callback);
+    // Call immediately
+    fetchMembers();
     
     // Poll every 2 seconds for changes
-    const interval = setInterval(() => {
-      fetchMembers().then(callback);
-    }, 2000);
+    const interval = setInterval(fetchMembers, 2000);
     
     return () => clearInterval(interval);
   },

@@ -331,11 +331,11 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find(t => t.id === id);
     if (task?.completed && task.ownerId) {
-      // Remove XP for completed task
-      removeXP(task.ownerId, -50);
+      // Remove XP for completed task (async - fire and forget)
+      removeXP(task.ownerId, -50).catch(err => console.error('Error removing XP:', err));
       // Remove XP for completed subtasks
       task.subtasks.filter(st => st.completed).forEach(() => {
-        removeXP(task.ownerId, -10);
+        removeXP(task.ownerId, -10).catch(err => console.error('Error removing XP:', err));
       });
     }
     
