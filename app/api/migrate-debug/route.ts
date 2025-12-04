@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { execSync } from 'child_process';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,68 +21,119 @@ export async function POST() {
     // Skip Prisma generate - it's already done during build
     console.log('📦 Skipping Prisma generate (already done in build)...');
 
-    // Check for failed migrations first
-    console.log('🔍 Checking for failed migrations...');
+    // Try to create tables directly using Prisma Client
+    console.log('🚀 Creating database tables directly...');
+    
     try {
-      const statusOutput = execSync('npx prisma migrate status', {
-        encoding: 'utf-8',
-        env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || '' }
-      });
-      console.log('Migration status:', statusOutput);
+      // Check if User table exists
+      await prisma.$queryRaw`SELECT 1 FROM "User" LIMIT 1`;
+      console.log('✅ Tables already exist');
       
-      // If there are failed migrations, resolve them
-      if (statusOutput.includes('failed') || statusOutput.includes('Failed')) {
-        console.log('⚠️ Found failed migrations, resolving...');
-        try {
-          // Mark failed migration as rolled back
-          execSync('npx prisma migrate resolve --rolled-back 20251203154938_init', {
-            encoding: 'utf-8',
-            env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || '' }
-          });
-          console.log('✅ Resolved failed migration');
-        } catch (resolveError: any) {
-          console.log('⚠️ Could not resolve migration, trying to continue...');
-          // Try to mark as applied if rolled back doesn't work
-          try {
-            execSync('npx prisma migrate resolve --applied 20251203154938_init', {
-              encoding: 'utf-8',
-              env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || '' }
-            });
-            console.log('✅ Marked failed migration as applied');
-          } catch (e) {
-            console.log('⚠️ Could not resolve, will try to deploy anyway...');
-          }
-        }
-      }
-    } catch (statusError) {
-      console.log('⚠️ Could not check migration status, continuing...');
+      return NextResponse.json({
+        success: true,
+        message: 'Tables already exist',
+      });
+    } catch (e: any) {
+      // Table doesn't exist, create it
+      console.log('📦 Creating tables...');
     }
 
-    // Run migrations
-    console.log('🚀 Deploying migrations...');
     try {
-      const output = execSync('npx prisma migrate deploy', {
-        encoding: 'utf-8',
-        env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || '' }
-      });
-      
-      console.log('✅ Migration completed successfully!');
-      console.log('Migration output:', output);
+      // Create tables using raw SQL
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "User" (
+          "id" TEXT NOT NULL,
+          "email" TEXT NOT NULL,
+          "password" TEXT NOT NULL,
+          "name" TEXT,
+          "avatar" TEXT,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL,
+          CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+        );
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Task" (
+          "id" TEXT NOT NULL,
+          "title" TEXT NOT NULL,
+          "description" TEXT,
+          "priority" TEXT NOT NULL DEFAULT 'medium',
+          "status" TEXT NOT NULL DEFAULT 'todo',
+          "dueDate" TIMESTAMP(3),
+          "tags" TEXT NOT NULL DEFAULT '[]',
+          "completed" BOOLEAN NOT NULL DEFAULT false,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL,
+          "createdById" TEXT NOT NULL,
+          CONSTRAINT "Task_pkey" PRIMARY KEY ("id")
+        );
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Task" ADD CONSTRAINT IF NOT EXISTS "Task_createdById_fkey" 
+        FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "Subtask" (
+          "id" TEXT NOT NULL,
+          "title" TEXT NOT NULL,
+          "completed" BOOLEAN NOT NULL DEFAULT false,
+          "taskId" TEXT NOT NULL,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          "updatedAt" TIMESTAMP(3) NOT NULL,
+          CONSTRAINT "Subtask_pkey" PRIMARY KEY ("id")
+        );
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Subtask" ADD CONSTRAINT IF NOT EXISTS "Subtask_taskId_fkey" 
+        FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS "TaskAssignment" (
+          "id" TEXT NOT NULL,
+          "userId" TEXT NOT NULL,
+          "taskId" TEXT NOT NULL,
+          "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CONSTRAINT "TaskAssignment_pkey" PRIMARY KEY ("id")
+        );
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        CREATE UNIQUE INDEX IF NOT EXISTS "TaskAssignment_userId_taskId_key" 
+        ON "TaskAssignment"("userId", "taskId");
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "TaskAssignment" ADD CONSTRAINT IF NOT EXISTS "TaskAssignment_userId_fkey" 
+        FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+      `);
+
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "TaskAssignment" ADD CONSTRAINT IF NOT EXISTS "TaskAssignment_taskId_fkey" 
+        FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+      `);
+
+      console.log('✅ Tables created successfully!');
 
       return NextResponse.json({
         success: true,
-        message: 'Migrations deployed successfully',
-        output: output
+        message: 'Database tables created successfully',
       });
     } catch (error: any) {
-      console.error('❌ Migration failed:', error.message);
-      const errorOutput = error.stdout || error.stderr || error.message;
-      
+      console.error('❌ Failed to create tables:', error.message);
       return NextResponse.json(
         { 
-          error: 'Migration failed',
+          error: 'Failed to create tables',
           details: error.message,
-          output: errorOutput
+          stack: error.stack
         },
         { status: 500 }
       );
