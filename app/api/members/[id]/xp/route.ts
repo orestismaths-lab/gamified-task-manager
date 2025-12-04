@@ -38,8 +38,14 @@ export async function POST(
 
     const { amount } = body as { amount?: number };
 
-    if (typeof amount !== 'number') {
-      return handleValidationError(['XP amount must be a number']);
+    if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+      return handleValidationError(['XP amount must be a valid number']);
+    }
+
+    // Security: Only allow users to update their own XP, or allow admins (future feature)
+    // For now, only allow updating own XP
+    if (params.id !== user.id) {
+      return NextResponse.json({ error: 'Unauthorized to update this member\'s XP' }, { status: 403 });
     }
 
     // Get or create member profile

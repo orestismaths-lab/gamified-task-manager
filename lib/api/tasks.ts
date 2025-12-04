@@ -17,7 +17,6 @@ export const tasksAPI = {
         throw new Error(`Failed to fetch tasks: ${res.status}`);
       }
       const data = (await res.json()) as { tasks: Task[] };
-      console.log(`[getTasks] Fetched ${data.tasks.length} tasks from database`);
       return data.tasks;
     } catch (error) {
       console.error('[getTasks] Error fetching tasks from API:', error);
@@ -62,7 +61,6 @@ export const tasksAPI = {
       }
       
       const data = (await res.json()) as { task: Task };
-      console.log(`[createTask] Created task "${data.task.title}" with ID ${data.task.id} in database`);
       return data.task.id;
     } catch (error) {
       console.error('[createTask] Error creating task via API:', error);
@@ -86,7 +84,7 @@ export const tasksAPI = {
         console.error(`[updateTask] Failed to update task ${taskId}: ${res.status} ${errorText}`);
         throw new Error(`Failed to update task: ${res.status}`);
       }
-      console.log(`[updateTask] Updated task ${taskId} in database`);
+      // Task updated successfully
     } catch (error) {
       console.error(`[updateTask] Error updating task ${taskId}:`, error);
       // NO localStorage fallback - throw error instead
@@ -107,7 +105,7 @@ export const tasksAPI = {
         console.error(`[deleteTask] Failed to delete task ${taskId}: ${res.status} ${errorText}`);
         throw new Error(`Failed to delete task: ${res.status}`);
       }
-      console.log(`[deleteTask] Deleted task ${taskId} from database`);
+      // Task deleted successfully
     } catch (error) {
       console.error(`[deleteTask] Error deleting task ${taskId}:`, error);
       // NO localStorage fallback - throw error instead
@@ -132,7 +130,6 @@ export const tasksAPI = {
         }
         const data = (await res.json()) as { tasks: Task[] };
         // Backend already filters by user.id, so we get all tasks for the logged-in user
-        console.log(`[subscribeToTasks] Fetched ${data.tasks.length} tasks from API`);
         callback(data.tasks);
       } catch (error) {
         console.error('[subscribeToTasks] Error fetching tasks:', error);

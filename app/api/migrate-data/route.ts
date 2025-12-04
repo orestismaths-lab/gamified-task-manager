@@ -58,7 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
           });
 
           if (existingTask) {
-            console.log(`[migrate-data] Task ${task.id} already exists, skipping`);
+            // Task already exists, skip
             continue;
           }
 
@@ -71,7 +71,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
               priority: task.priority || 'medium',
               status: task.status || (task.completed ? 'completed' : 'todo'),
               dueDate: task.dueDate ? new Date(task.dueDate) : null,
-              tags: JSON.stringify(task.tags || []),
+              tags: (() => {
+                try {
+                  return Array.isArray(task.tags) ? JSON.stringify(task.tags) : '[]';
+                } catch {
+                  return '[]';
+                }
+              })(),
               completed: task.completed || false,
               createdById: user.id, // Assign to current user
               subtasks: {
@@ -98,7 +104,9 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
 
     // Migrate members (create MemberProfile for users)
     if (members && Array.isArray(members) && members.length > 0) {
-      console.log(`[migrate-data] Migrating ${members.length} members for user ${user.id}`);
+      if (process.env.NODE_ENV === 'development') {
+        logError('Data Migration', { message: `Migrating ${members.length} members for user ${user.id}` });
+      }
       
       // Find member that matches current user
       const userMember = members.find(m => m.userId === user.id || m.email === user.email);
@@ -120,7 +128,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
               },
             });
             importedMembers++;
-            console.log(`[migrate-data] Created MemberProfile for user ${user.id} with XP: ${userMember.xp}, Level: ${userMember.level}`);
           } else {
             // Update existing profile with XP/level from localStorage (if higher)
             if (userMember.xp > existingProfile.xp || userMember.level > existingProfile.level) {
@@ -131,7 +138,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
                   level: Math.max(existingProfile.level, userMember.level || 1),
                 },
               });
-              console.log(`[migrate-data] Updated MemberProfile for user ${user.id}`);
+              // MemberProfile updated
             }
           }
         } catch (error) {

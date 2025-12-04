@@ -17,7 +17,6 @@ export const membersAPI = {
         throw new Error(`Failed to fetch members: ${res.status}`);
       }
       const data = (await res.json()) as { members: Member[] };
-      console.log(`[getMembers] Fetched ${data.members.length} members from database`);
       return data.members;
     } catch (error) {
       console.error('[getMembers] Error fetching members from API:', error);
@@ -157,7 +156,6 @@ export const membersAPI = {
           throw new Error(`Failed to fetch members: ${res.status}`);
         }
         const data = (await res.json()) as { members: Member[] };
-        console.log(`[subscribeToMembers] Fetched ${data.members.length} members from database`);
         callback(data.members);
       } catch (error) {
         console.error('[subscribeToMembers] Error fetching members:', error);

@@ -77,12 +77,10 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         (apiTasks) => {
           // Clear any localStorage tasks when logged in to avoid conflicts
           if (user?.id) {
-            console.log(`[TaskManagerContext] Loaded ${apiTasks.length} tasks from API for user ${user.email}`);
             // Clear localStorage tasks to avoid showing stale data
             try {
               const localTasks = storage.getTasks();
               if (localTasks.length > 0) {
-                console.log(`[TaskManagerContext] Clearing ${localTasks.length} localStorage tasks (user is logged in)`);
                 storage.saveTasks([]);
               }
             } catch (e) {

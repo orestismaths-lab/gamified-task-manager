@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { handleDatabaseError, handleValidationError, logError } from '@/lib/utils/errors';
 import { getSessionUser } from '@/lib/utils/session';
 import type { UserPublic } from '@/lib/types/auth';
+import type { Task } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/tasks
  * Returns all tasks for the authenticated user (created by or assigned to)
  */
-export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: any[] } | { error: string; details?: string }>> {
+export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: Task[] } | { error: string; details?: string }>> {
   try {
     const user = await getSessionUser(req);
     
@@ -23,8 +24,10 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: any[]
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Debug logging
-    console.log(`[GET /api/tasks] User: ${user.email} (${user.id})`);
+    // Log for debugging (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      logError('Tasks API - GET', { message: `User: ${user.email} (${user.id})` });
+    }
 
     // Get tasks created by user or assigned to user
     const tasks = await prisma.task.findMany({
@@ -107,7 +110,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: any[]
  * POST /api/tasks
  * Creates a new task
  */
-export async function POST(req: NextRequest): Promise<NextResponse<{ task: any } | { error: string; details?: string }>> {
+export async function POST(req: NextRequest): Promise<NextResponse<{ task: Task } | { error: string; details?: string }>> {
   try {
     const user = await getSessionUser(req);
     
@@ -137,11 +140,24 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: any }
       return handleValidationError(['Task title is required']);
     }
 
-    // Debug logging
+    // Validate assignedTo users exist
     const assignedToUserIds = Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0
-      ? taskData.assignedTo as string[]
+      ? (taskData.assignedTo as unknown[]).filter((id): id is string => typeof id === 'string')
       : [user.id];
-    console.log(`[POST /api/tasks] Creating task "${taskData.title}" for user ${user.email} (${user.id}), assignedTo: ${assignedToUserIds.join(', ')}`);
+    
+    // Verify all assigned users exist
+    if (assignedToUserIds.length > 0) {
+      const existingUsers = await prisma.user.findMany({
+        where: { id: { in: assignedToUserIds } },
+        select: { id: true },
+      });
+      const existingUserIds = new Set(existingUsers.map(u => u.id));
+      const invalidUserIds = assignedToUserIds.filter(id => !existingUserIds.has(id));
+      
+      if (invalidUserIds.length > 0) {
+        return handleValidationError([`Invalid user IDs: ${invalidUserIds.join(', ')}`]);
+      }
+    }
 
     // Create task with assignments
     const task = await prisma.task.create({
@@ -151,7 +167,15 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: any }
         priority: (taskData.priority as string) || 'medium',
         status: (taskData.status as string) || 'todo',
         dueDate: taskData.dueDate ? new Date(taskData.dueDate as string) : null,
-        tags: taskData.tags ? JSON.stringify(taskData.tags) : '[]',
+        tags: (() => {
+          try {
+            return taskData.tags && Array.isArray(taskData.tags) 
+              ? JSON.stringify(taskData.tags) 
+              : '[]';
+          } catch {
+            return '[]';
+          }
+        })(),
         completed: taskData.status === 'completed',
         createdById: user.id,
         subtasks: {

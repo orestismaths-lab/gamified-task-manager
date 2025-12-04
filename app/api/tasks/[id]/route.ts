@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
-): Promise<NextResponse<{ task: any } | { error: string; details?: string }>> {
+): Promise<NextResponse<{ task: Task } | { error: string; details?: string }>> {
   try {
     const user: UserPublic | null = await getSessionUser(req);
     
@@ -105,7 +105,7 @@ export async function GET(
 export async function PUT(
   req: NextRequest,
   { params }: { params: { id: string } }
-): Promise<NextResponse<{ task: any } | { error: string; details?: string }>> {
+): Promise<NextResponse<{ task: Task } | { error: string; details?: string }>> {
   try {
     const user: UserPublic | null = await getSessionUser(req);
     
