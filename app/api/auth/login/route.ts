@@ -23,10 +23,12 @@ export async function POST(req: NextRequest) {
       await prisma.$connect();
     } catch (connectError: any) {
       console.error('Prisma connection error:', connectError);
+      const errorMsg = connectError?.message || 'Unknown connection error';
+      // Include error message in production for debugging
       return NextResponse.json(
         { 
           error: 'Database connection failed',
-          details: process.env.NODE_ENV === 'development' ? connectError?.message : undefined
+          details: errorMsg // Show in production temporarily for debugging
         },
         { status: 500 }
       );
@@ -43,10 +45,11 @@ export async function POST(req: NextRequest) {
       const errorMessage = dbError?.message || 'Unknown database error';
       const errorStack = dbError?.stack || '';
       console.error('Full error:', { errorMessage, errorStack, error: dbError });
+      // Include error message in production for debugging
       return NextResponse.json(
         { 
           error: `Database error: ${errorMessage}`,
-          details: process.env.NODE_ENV === 'development' ? errorStack : undefined
+          details: errorMessage // Show in production temporarily for debugging
         },
         { status: 500 }
       );
@@ -101,7 +104,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { 
         error: userFriendlyError,
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+        details: errorMessage // Show in production temporarily for debugging
       },
       { status: 500 }
     );
