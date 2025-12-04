@@ -110,9 +110,6 @@ export async function PUT(
 
     const updatedUser = await prisma.user.update({
       where: { id: params.id },
-      include: {
-        memberProfile: true,
-      },
       data: updateData,
       select: {
         id: true,
