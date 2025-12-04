@@ -1,5 +1,11 @@
+/**
+ * Database Migration API Route
+ * Handles Prisma database migrations (protected endpoint)
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { execSync } from 'child_process';
+import { logError } from '@/lib/utils/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,15 +30,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (!providedSecret || providedSecret !== MIGRATE_SECRET) {
-      console.error('Migration auth failed:', {
-        provided: providedSecret ? '***' : 'none',
-        expected: MIGRATE_SECRET ? '***' : 'not set',
+      logError('Migration - Auth failed', new Error('Invalid secret'), {
         hasAuthHeader: !!authHeader,
+        secretProvided: !!providedSecret,
       });
       return NextResponse.json(
-        { 
+        {
           error: 'Unauthorized. Provide MIGRATE_SECRET in Authorization header or body.',
-          hint: 'Check that MIGRATE_SECRET environment variable is set in Vercel and matches the secret you provide.'
+          hint: 'Check that MIGRATE_SECRET environment variable is set in Vercel and matches the secret you provide.',
         },
         { status: 401 }
       );
@@ -47,12 +52,12 @@ export async function POST(req: NextRequest) {
         stdio: 'inherit',
         env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL || '' }
       });
-    } catch (error: any) {
-      console.error('❌ Prisma generate failed:', error.message);
+    } catch (error) {
+      logError('Migration - Prisma generate', error);
       return NextResponse.json(
-        { 
+        {
           error: 'Prisma generate failed',
-          details: error.message 
+          details: error instanceof Error ? error.message : String(error),
         },
         { status: 500 }
       );
@@ -111,48 +116,55 @@ export async function POST(req: NextRequest) {
         message: 'Migrations deployed successfully',
         output: output
       });
-    } catch (error: any) {
-      console.error('❌ Migration failed:', error.message);
-      const errorOutput = error.stdout || error.stderr || error.message;
-      
+    } catch (error) {
+      logError('Migration - Deploy failed', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorOutput = (error as { stdout?: string; stderr?: string }).stdout ||
+                          (error as { stdout?: string; stderr?: string }).stderr ||
+                          errorMessage;
+
       // If error is about failed migrations, provide resolution steps
       if (errorOutput.includes('P3009') || errorOutput.includes('failed migrations')) {
         return NextResponse.json(
-          { 
+          {
             error: 'Migration failed due to previous failed migration',
             details: errorOutput,
-            resolution: 'The migration endpoint will try to resolve this automatically. Call it again, or manually run: npx prisma migrate resolve --rolled-back 20251203154938_init'
+            resolution:
+              'The migration endpoint will try to resolve this automatically. Call it again, or manually run: npx prisma migrate resolve --rolled-back 20251203154938_init',
           },
           { status: 500 }
         );
       }
-      
+
       return NextResponse.json(
-        { 
+        {
           error: 'Migration failed',
-          details: error.message,
-          output: errorOutput
+          details: errorMessage,
+          output: errorOutput,
         },
         { status: 500 }
       );
     }
-  } catch (err: any) {
-    console.error('Migration endpoint error:', err);
+  } catch (err) {
+    logError('Migration - Unexpected error', err);
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        details: err?.message 
+        details: err instanceof Error ? err.message : String(err),
       },
       { status: 500 }
     );
   }
 }
 
-// GET endpoint for status check
-export async function GET() {
+/**
+ * GET /api/migrate
+ * Returns migration endpoint status and usage instructions
+ */
+export async function GET(): Promise<NextResponse<{ message: string; hint: string }>> {
   return NextResponse.json({
     message: 'Migration endpoint is ready. Use POST with MIGRATE_SECRET.',
-    hint: 'Set MIGRATE_SECRET in Vercel Environment Variables and call: POST /api/migrate with Authorization: Bearer <secret>'
+    hint: 'Set MIGRATE_SECRET in Vercel Environment Variables and call: POST /api/migrate with Authorization: Bearer <secret>',
   });
 }
 

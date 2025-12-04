@@ -1,21 +1,20 @@
+/**
+ * Logout API Route
+ * Handles user logout and session termination
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { clearSessionCookie } from '@/lib/utils/session';
 
 export const dynamic = 'force-dynamic';
 
-const SESSION_COOKIE_NAME = 'task_manager_session';
-
-export async function POST(req: NextRequest) {
+/**
+ * POST /api/auth/logout
+ * Clears the user session
+ */
+export async function POST(_req: NextRequest): Promise<NextResponse<{ success: boolean }>> {
   const response = NextResponse.json({ success: true });
-
-  // Delete cookie
-  response.cookies.set(SESSION_COOKIE_NAME, '', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 0,
-    path: '/',
-  });
-
+  clearSessionCookie(response);
   return response;
 }
 

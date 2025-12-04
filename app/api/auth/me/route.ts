@@ -1,12 +1,26 @@
-import { NextResponse } from "next/server";
+/**
+ * Auth Status API Route
+ * Returns the current authenticated user (simplified implementation)
+ */
 
-// Force dynamic rendering to prevent static optimization errors
+import { NextResponse } from 'next/server';
+
 export const dynamic = 'force-dynamic';
 
-// Simplified auth check for demo: always return user: null
-// We intentionally avoid using cookies here so that the route
-// can be safely statically optimized on Vercel without errors.
-export async function GET() {
+/**
+ * GET /api/auth/me
+ * Returns the current authenticated user
+ * 
+ * Note: This is a simplified implementation that always returns null.
+ * In a production system, this should validate the session cookie
+ * and return the actual user data from the database.
+ */
+export async function GET(): Promise<NextResponse<{ user: null }>> {
+  // TODO: Implement proper session validation
+  // 1. Read session cookie
+  // 2. Validate session token in database
+  // 3. Return user data if valid, null otherwise
+  
   return NextResponse.json({ user: null }, { status: 200 });
 }
 

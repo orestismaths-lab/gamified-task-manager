@@ -1,64 +1,70 @@
+/**
+ * Register API Route
+ * Handles user registration and session creation
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
+import { validateRegisterRequest } from '@/lib/utils/validation';
+import { handleDatabaseError, handleValidationError, logError } from '@/lib/utils/errors';
+import { generateSessionToken, setSessionCookie } from '@/lib/utils/session';
+import { PASSWORD_CONFIG } from '@/lib/constants';
+import type { AuthResponse } from '@/lib/types/auth';
 
 export const dynamic = 'force-dynamic';
 
-const SESSION_COOKIE_NAME = 'task_manager_session';
-const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-export async function POST(req: NextRequest) {
+/**
+ * POST /api/auth/register
+ * Creates a new user account and session
+ */
+export async function POST(req: NextRequest): Promise<NextResponse<AuthResponse | { error: string; details?: string }>> {
   try {
-    const { email, password, name } = (await req.json()) as {
-      email?: string;
-      password?: string;
-      name?: string;
-    };
-
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
-    }
-
-    // Test Prisma connection first
+    // Parse and validate request body
+    let body: unknown;
     try {
-      await prisma.$connect();
-    } catch (connectError: any) {
-      console.error('Prisma connection error:', connectError);
-      return NextResponse.json(
-        { 
-          error: 'Database connection failed',
-          details: process.env.NODE_ENV === 'development' ? connectError?.message : undefined
-        },
-        { status: 500 }
-      );
+      body = await req.json();
+    } catch {
+      return handleValidationError(['Invalid request body']);
     }
+
+    const validation = validateRegisterRequest(body);
+    if (!validation.valid || !validation.email || !validation.password) {
+      return handleValidationError(validation.errors);
+    }
+
+    const { email, password, name } = validation;
 
     // Check if user already exists
     let existingUser;
     try {
       existingUser = await prisma.user.findUnique({
         where: { email },
+        select: { id: true },
       });
-    } catch (dbError: any) {
-      console.error('Database error in register (check existing):', dbError);
-      const errorMessage = dbError?.message || 'Unknown database error';
-      const errorStack = dbError?.stack || '';
-      console.error('Full error:', { errorMessage, errorStack, error: dbError });
-      return NextResponse.json(
-        { 
-          error: `Database error: ${errorMessage}`,
-          details: process.env.NODE_ENV === 'development' ? errorStack : undefined
-        },
-        { status: 500 }
-      );
+    } catch (error) {
+      logError('Register - Check existing user', error, { email });
+      return handleDatabaseError(error);
     }
 
     if (existingUser) {
-      return NextResponse.json({ error: 'User with this email already exists' }, { status: 409 });
+      return NextResponse.json(
+        { error: 'User with this email already exists' },
+        { status: 409 }
+      );
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    let hashedPassword: string;
+    try {
+      hashedPassword = await bcrypt.hash(password, PASSWORD_CONFIG.BCRYPT_ROUNDS);
+    } catch (error) {
+      logError('Register - Password hashing', error);
+      return NextResponse.json(
+        { error: 'Failed to process password' },
+        { status: 500 }
+      );
+    }
 
     // Create user
     let user;
@@ -67,71 +73,54 @@ export async function POST(req: NextRequest) {
         data: {
           email,
           password: hashedPassword,
-          name: name || email.split('@')[0],
+          name: name || email.split('@')[0] || 'User',
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
         },
       });
-    } catch (dbError: any) {
-      console.error('Database error in register (create user):', dbError);
-      const errorMessage = dbError?.message || 'Unknown database error';
-      const errorStack = dbError?.stack || '';
-      console.error('Full error:', { errorMessage, errorStack, error: dbError });
-      
+    } catch (error) {
+      logError('Register - Create user', error, { email });
+
       // Check if it's a unique constraint violation
-      if (errorMessage.includes('Unique constraint') || errorMessage.includes('UNIQUE constraint')) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (
+        errorMessage.includes('Unique constraint') ||
+        errorMessage.includes('UNIQUE constraint') ||
+        errorMessage.includes('UniqueViolation')
+      ) {
         return NextResponse.json(
           { error: 'User with this email already exists' },
           { status: 409 }
         );
       }
-      
-      return NextResponse.json(
-        { 
-          error: `Database error: ${errorMessage}`,
-          details: process.env.NODE_ENV === 'development' ? errorStack : undefined
-        },
-        { status: 500 }
-      );
+
+      return handleDatabaseError(error);
     }
 
-    // Create session token
-    const sessionToken = crypto.randomUUID();
-
-    // Set cookie
+    // Create session
+    const sessionToken = generateSessionToken();
     const response = NextResponse.json({
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
       },
-    });
+    } satisfies AuthResponse);
 
-    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: SESSION_DURATION_MS / 1000,
-      path: '/',
-    });
+    setSessionCookie(response, sessionToken);
 
     // TODO: Store sessionToken in DB for validation (simplified for now)
 
     return response;
-  } catch (err: any) {
-    console.error('Register error:', err);
-    const errorMessage = err?.message || 'Unknown error';
-    const errorStack = err?.stack || '';
-    console.error('Error details:', { errorMessage, errorStack, error: err });
-    
-    // Provide more helpful error message in production
-    let userFriendlyError = 'Failed to register user';
-    if (errorMessage.includes('SQLite') || errorMessage.includes('database') || errorMessage.includes('ENOENT')) {
-      userFriendlyError = 'Database connection error. Please try again later.';
-    }
-    
+  } catch (error) {
+    logError('Register - Unexpected error', error);
     return NextResponse.json(
-      { 
-        error: userFriendlyError,
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      {
+        error: 'An unexpected error occurred',
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined,
       },
       { status: 500 }
     );
