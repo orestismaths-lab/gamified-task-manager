@@ -508,14 +508,19 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
   // Member operations
   const addMember = useCallback(async (memberData: Omit<Member, 'id' | 'xp' | 'level'>) => {
-    // Create member without userId (allows admin to create members for future users)
-    // userId will be linked when user signs up and selects this member
+    if (user?.id) {
+      // When logged in, members are users - cannot create new members
+      // This should only be used for updating user profile
+      throw new Error('Cannot create new members when logged in. Members are users.');
+    }
+    
+    // For non-logged-in users, fallback to localStorage
     try {
-      await membersAPI.createMember(memberData); // No userId - optional parameter
+      await membersAPI.createMember(memberData);
       // Real-time listener will update state automatically
     } catch (error) {
       console.error('Error creating member:', error);
-      // Fallback to local state
+      // Fallback to local state only for non-logged-in users
       const newMember: Member = {
         ...memberData,
         id: generateId(),
@@ -524,9 +529,22 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       };
       setMembers(prev => [...prev, newMember]);
     }
-  }, [generateId]);
+  }, [generateId, user]);
 
   const updateMember = useCallback(async (id: string, updates: Partial<Member>) => {
+    if (user?.id) {
+      // When logged in, update via API
+      try {
+        await membersAPI.updateMember(id, updates);
+        // Real-time listener will update state automatically
+      } catch (error) {
+        console.error('Error updating member:', error);
+        throw error; // Re-throw to show error to user
+      }
+      return;
+    }
+    
+    // For non-logged-in users, update in localStorage
     if (user?.id) {
       // Update in backend API
       try {
