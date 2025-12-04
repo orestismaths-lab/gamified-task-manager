@@ -8,7 +8,6 @@ Double-click: **`SETUP_AND_TEST.bat`**
 Αυτό θα:
 - ✅ Check Node.js
 - ✅ Install dependencies
-- ✅ Check Firebase config
 - ✅ Start development server
 
 ---
@@ -20,7 +19,6 @@ Double-click: **`CHECK_SETUP.bat`**
 - Node.js installation
 - npm installation
 - Dependencies
-- Firebase config
 - Git setup
 
 ---
@@ -42,17 +40,7 @@ cd task_manager
 npm install
 ```
 
-### 2. Update Firebase Config
-1. Open: `lib/firebase.ts`
-2. Get config from Firebase Console
-3. Update API key and App ID
-
-### 3. Setup Firestore
-1. Firebase Console → Firestore Database
-2. Create database (if not exists)
-3. Setup Security Rules (see `FIRESTORE_SECURITY_RULES.md`)
-
-### 4. Start Server
+### 2. Start Server
 ```bash
 npm run dev
 ```
@@ -68,10 +56,6 @@ npm run dev
 ### "npm install failed"
 - Check internet connection
 - Try: `npm install --legacy-peer-deps`
-
-### "Firebase error"
-- See `FIX_API_KEY.md` for API key issues
-- See `FIREBASE_ERROR_FIX.md` for other errors
 
 ### "Port 3000 already in use"
 - Stop other applications using port 3000

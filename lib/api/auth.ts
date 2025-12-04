@@ -1,37 +1,45 @@
-// Firebase Authentication API
+// New Backend Authentication API (no Firebase)
 
-import { 
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  signInWithPopup,
-  GoogleAuthProvider,
-  User,
-  onAuthStateChanged,
-  Auth
-} from 'firebase/auth';
-import { auth } from '@/lib/firebase';
-
-const googleProvider = new GoogleAuthProvider();
+export interface User {
+  id: string;
+  email: string;
+  name?: string | null;
+}
 
 export const authAPI = {
   // Sign in with email/password
   signIn: async (email: string, password: string): Promise<User> => {
-    // Validate inputs
     if (!email || !email.includes('@')) {
       throw new Error('Please enter a valid email address');
     }
     if (!password || password.length === 0) {
       throw new Error('Please enter your password');
     }
-    
-    const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-    return userCredential.user;
+
+    const res = await fetch(`/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim(), password }),
+    });
+
+    if (!res.ok) {
+      let errorMessage = 'Login failed';
+      try {
+        const data = (await res.json()) as { error?: string; details?: string };
+        errorMessage = data.error || data.details || 'Login failed';
+      } catch (e) {
+        // If response is not JSON, use status text
+        errorMessage = res.statusText || 'Login failed';
+      }
+      throw new Error(errorMessage);
+    }
+
+    const data = (await res.json()) as { user: User };
+    return data.user;
   },
 
   // Register with email/password
   register: async (email: string, password: string, displayName: string): Promise<User> => {
-    // Validate inputs
     if (!email || !email.includes('@')) {
       throw new Error('Please enter a valid email address');
     }
@@ -41,46 +49,61 @@ export const authAPI = {
     if (!displayName || displayName.trim().length === 0) {
       throw new Error('Please enter a display name');
     }
-    
-    const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
-    // Note: displayName is stored in Firestore member document, not Firebase Auth profile
-    return userCredential.user;
-  },
 
-  // Sign in with Google
-  signInWithGoogle: async (): Promise<User> => {
-    try {
-      const userCredential = await signInWithPopup(auth, googleProvider);
-      return userCredential.user;
-    } catch (error: any) {
-      // Provide more helpful error messages
-      if (error.code === 'auth/popup-closed-by-user') {
-        throw new Error('Sign-in was cancelled. Please try again.');
-      } else if (error.code === 'auth/popup-blocked') {
-        throw new Error('Popup was blocked. Please allow popups for this site and try again.');
-      } else if (error.code === 'auth/unauthorized-domain') {
-        throw new Error('This domain is not authorized. Please contact support.');
-      } else if (error.code === 'auth/operation-not-allowed') {
-        throw new Error('Google sign-in is not enabled. Please enable it in Firebase Console.');
-      } else {
-        throw new Error(error.message || 'Google sign-in failed. Please try again.');
+    const res = await fetch(`/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        name: displayName.trim(),
+      }),
+    });
+
+    if (!res.ok) {
+      let errorMessage = 'Registration failed';
+      try {
+        const data = (await res.json()) as { error?: string; details?: string };
+        errorMessage = data.error || data.details || 'Registration failed';
+      } catch (e) {
+        errorMessage = res.statusText || 'Registration failed';
       }
+      throw new Error(errorMessage);
     }
+
+    const data = (await res.json()) as { user: User };
+    return data.user;
   },
 
   // Sign out
   signOut: async (): Promise<void> => {
-    await signOut(auth);
+    await fetch(`/api/auth/logout`, { method: 'POST' });
   },
 
   // Get current user
-  getCurrentUser: (): User | null => {
-    return auth.currentUser;
+  getCurrentUser: async (): Promise<User | null> => {
+    try {
+      const res = await fetch(`/api/auth/me`);
+      if (!res.ok) return null;
+      const data = (await res.json()) as { user: User | null };
+      return data.user;
+    } catch {
+      return null;
+    }
   },
 
-  // Listen to auth state changes
+  // Listen to auth state changes (simplified - just poll)
   onAuthStateChanged: (callback: (user: User | null) => void) => {
-    return onAuthStateChanged(auth, callback);
+    // Simple polling implementation
+    const checkAuth = async () => {
+      const user = await authAPI.getCurrentUser();
+      callback(user);
+    };
+
+    checkAuth();
+    const interval = setInterval(checkAuth, 5000); // Check every 5 seconds
+
+    // Return unsubscribe function
+    return () => clearInterval(interval);
   },
 };
-

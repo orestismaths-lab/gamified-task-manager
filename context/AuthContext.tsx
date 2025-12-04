@@ -1,8 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from 'firebase/auth';
-import { authAPI } from '@/lib/api/auth';
+import { authAPI, User } from '@/lib/api/auth';
 import { membersAPI } from '@/lib/api/members';
 import { Member } from '@/types';
 
@@ -12,7 +11,6 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -27,22 +25,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     
-    const unsubscribe = authAPI.onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribe = authAPI.onAuthStateChanged(async (apiUser) => {
       if (!isMounted) return;
       
-      setUser(firebaseUser);
+      setUser(apiUser);
       
-      if (firebaseUser) {
+      if (apiUser) {
         // Load or create member profile
         try {
-          let userMember = await membersAPI.getMemberByUserId(firebaseUser.uid);
+          let userMember = await membersAPI.getMemberByUserId(apiUser.id);
           
           if (!userMember) {
             // Create member profile if doesn't exist
             const memberId = await membersAPI.createMember({
-              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              email: firebaseUser.email || undefined,
-            }, firebaseUser.uid);
+              name: apiUser.name || apiUser.email.split('@')[0] || 'User',
+              email: apiUser.email,
+            }, apiUser.id);
             
             userMember = await membersAPI.getMember(memberId);
           }
@@ -79,10 +77,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await authAPI.register(email, password, displayName);
   };
 
-  const signInWithGoogle = async () => {
-    await authAPI.signInWithGoogle();
-  };
-
   const signOut = async () => {
     await authAPI.signOut();
     setMember(null);
@@ -96,7 +90,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         loading,
         signIn,
         signUp,
-        signInWithGoogle,
         signOut,
       }}
     >

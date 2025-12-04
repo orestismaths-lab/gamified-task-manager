@@ -41,7 +41,7 @@ export interface Task {
   comments?: TaskComment[]; // Comments/activity log
   // Multi-user support
   assignedTo?: string[]; // Array of member IDs assigned to this task
-  createdBy?: string; // User ID who created this task (Firebase Auth UID)
+  createdBy?: string; // User ID who created this task
 }
 
 export interface TimeEntry {
@@ -66,7 +66,7 @@ export interface Member {
   xp: number;
   level: number;
   avatar?: string; // Optional avatar URL or emoji
-  userId?: string; // Firebase Auth UID (for multi-user)
+  userId?: string; // Internal user ID (for multi-user)
   email?: string; // User email (for multi-user)
 }
 

@@ -10,7 +10,7 @@ echo Starting development server...
 echo.
 echo ========================================
 echo   Server will start on:
-echo   http://localhost:3000
+echo   C
 echo ========================================
 echo.
 echo Press Ctrl+C to stop

@@ -1,139 +1,83 @@
-# 🚀 START HERE - Quick Setup
+# 🚀 START HERE - Quick Setup (χωρίς Firebase)
 
-## ✅ Όλα Έτοιμα!
-
-Έχω προετοιμάσει όλα για testing. Ακολούθησε αυτά τα βήματα:
+Η εφαρμογή Task Manager χρησιμοποιεί **δικό της backend με Prisma + SQLite** και **email/password auth**. Δεν χρειάζεται Firebase, API keys ή Firestore rules.
 
 ---
 
 ## 🎯 Step 1: Check Setup (Optional)
 
-Double-click: **`CHECK_SETUP.bat`**
+Double‑click: **`CHECK_SETUP.bat`**
 
 Αυτό θα ελέγξει:
 - ✅ Node.js installed
 - ✅ Dependencies installed
-- ✅ Firebase config exists
-- ✅ Git configured
 
 ---
 
 ## 🚀 Step 2: Start Application
 
 ### Option A: Full Automated (Recommended)
-Double-click: **`SETUP_AND_TEST.bat`**
+Double‑click: **`SETUP_AND_TEST.bat`**
 
 Αυτό θα:
-- ✅ Install dependencies (αν λείπουν)
-- ✅ Check Firebase config
-- ✅ Start development server
-- ✅ Open http://localhost:3000
+- ✅ Τρέξει `npm install` (αν χρειάζεται)
+- ✅ Ξεκινήσει τον development server
+- ✅ Ανοίξει το `http://localhost:3000` στον browser
 
 ### Option B: Quick Start (If Already Setup)
-Double-click: **`QUICK_START.bat`**
+Double‑click: **`QUICK_START.bat`**
 
 Αυτό θα:
 - ✅ Start development server
-- ✅ Open http://localhost:3000
+- ✅ Open `http://localhost:3000`
+
+### Option C: Manual
+
+```bash
+cd task_manager
+npm install
+npm run dev
+```
+και άνοιξε `http://localhost:3000`.
 
 ---
 
-## ⚠️ Step 3: Update Firebase Config (IMPORTANT!)
+## ✅ Step 3: Test the App
 
-**ΠΡΕΠΕΙ να κάνεις αυτό:**
+1. Άνοιξε `http://localhost:3000`
+2. Κάνε **Register** με email/password
+3. Κάνε **Login** με τα ίδια στοιχεία
+4. Δοκίμασε:
+   - Δημιουργία / επεξεργασία / διαγραφή tasks
+   - Ανάθεση σε μέλη
+   - Gamification (XP, levels, confetti)
 
-1. **Firebase Console:**
-   - https://console.firebase.google.com
-   - Project: `gamified-task-manager-3e2a4`
-   - ⚙️ Settings → Project settings
-   - Scroll to "Your apps" → Web app
-   - Copy config
-
-2. **Update `lib/firebase.ts`:**
-   - Open: `lib/firebase.ts`
-   - Replace `apiKey` and `appId` with values from Firebase Console
-   - Save
-
-3. **Restart server:**
-   - Stop (Ctrl + C)
-   - Start again (run `QUICK_START.bat`)
-
----
-
-## 🔒 Step 4: Setup Firestore (IMPORTANT!)
-
-**ΠΡΕΠΕΙ να κάνεις αυτό:**
-
-1. **Firebase Console → Firestore Database**
-2. **Create database** (αν δεν υπάρχει)
-   - Start in test mode
-   - Choose location
-   - Enable
-3. **Setup Security Rules:**
-   - Firestore Database → Rules tab
-   - Copy rules from `FIRESTORE_SECURITY_RULES.md`
-   - Publish
-
----
-
-## ✅ Step 5: Test!
-
-1. **Open:** http://localhost:3000
-2. **Register/Login:**
-   - Sign Up με email/password
-   - Ή "Continue with Google"
-3. **Create tasks:**
-   - Add task
-   - Assign to members
-   - Test features
-4. **Test real-time sync:**
-   - Open 2 browsers
-   - Create task in one
-   - See it appear in other
+Όλα τα δεδομένα αποθηκεύονται στη **δική σου SQLite βάση** μέσω Prisma.
 
 ---
 
 ## 📚 Documentation
 
-- `TESTING_GUIDE.md` - Complete testing guide
-- `NEXT_STEPS.md` - What to do next
-- `FIRESTORE_SECURITY_RULES.md` - Security rules
-- `FIX_API_KEY.md` - Fix API key issues
-- `README_SETUP.md` - Setup instructions
+- `README.md` – Γενική περιγραφή project
+- `PROJECT_SUMMARY.md` – Τι έχει υλοποιηθεί
+- `NEXT_STEPS.md` – Προτεινόμενα επόμενα βήματα (testing, deploy)
+- `TESTING_GUIDE.md` – Αναλυτικός οδηγός testing
+- `README_SETUP.md` – Extra οδηγίες setup για Windows
+
+> Σημείωση: Ό,τι αρχείο αναφέρει Firebase είναι legacy και δεν χρειάζεται.
 
 ---
 
 ## 🆘 If Something Doesn't Work
 
-### "Firebase error"
-- See `FIX_API_KEY.md`
-- Update Firebase config
-
-### "Permission denied"
-- Setup Security Rules (Step 4)
-
-### "Cannot connect"
-- Check Firebase config
-- Check internet connection
+- Έλεγξε ότι:
+  - Έχεις **Node.js 18+**
+  - Το `npm install` ολοκληρώθηκε χωρίς errors
+  - Τρέχεις τις εντολές μέσα από τον φάκελο `task_manager`
+- Αν δεις error στο terminal ή στον browser, κράτα το μήνυμα και στείλ’ το για βοήθεια.
 
 ---
 
-## ✅ Summary
+**Προτεινόμενο:** τρέξε `SETUP_AND_TEST.bat` για να ξεκινήσεις γρήγορα. 🚀
 
-**What I've Done:**
-- ✅ All code ready
-- ✅ Dependencies installed
-- ✅ Build verified
-- ✅ Automation scripts created
-- ✅ Documentation complete
-- ✅ Pushed to GitHub
-
-**What You Need to Do:**
-1. ⚠️ Update Firebase config (Step 3)
-2. ⚠️ Setup Firestore (Step 4)
-3. ✅ Test the application (Step 5)
-
----
-
-**Double-click `SETUP_AND_TEST.bat` to start!** 🚀
 

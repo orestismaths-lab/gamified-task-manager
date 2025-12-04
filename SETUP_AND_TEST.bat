@@ -17,7 +17,7 @@ echo ✅ Node.js found
 node --version
 echo.
 
-echo [2/4] Installing dependencies...
+echo [2/3] Installing dependencies...
 if not exist "node_modules" (
     echo Installing npm packages...
     call npm install
@@ -32,16 +32,7 @@ if not exist "node_modules" (
 )
 echo.
 
-echo [3/4] Checking Firebase config...
-findstr /C:"apiKey" lib\firebase.ts >nul 2>&1
-if %errorlevel% neq 0 (
-    echo ⚠️  Warning: Firebase config might be missing
-) else (
-    echo ✅ Firebase config file exists
-)
-echo.
-
-echo [4/4] Starting development server...
+echo [3/3] Starting development server...
 echo.
 echo ========================================
 echo   Server starting...

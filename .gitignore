@@ -37,3 +37,5 @@ next-env.d.ts
 
 # Firebase (optional - if you want to keep config in code, remove this)
 # lib/firebase.ts
+
+/lib/generated/prisma

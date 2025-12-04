@@ -77,7 +77,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
   // Load data from Firestore or localStorage
   useEffect(() => {
-    if (useFirestore && user?.uid) {
+    if (useFirestore && user?.id) {
       // Use Firestore with real-time listeners
       const unsubscribeTasks = tasksAPI.subscribeToTasks(
         (firestoreTasks) => {
@@ -146,7 +146,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useFirestore, user?.uid, authMember?.id]);
+  }, [useFirestore, user?.id, authMember?.id]);
 
   // Debounced save functions to avoid excessive localStorage writes
   const debouncedSaveTasks = useMemo(
@@ -201,13 +201,13 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       ...taskData,
       status: taskData.status || (taskData.completed ? 'completed' : 'todo'),
       assignedTo: taskData.assignedTo || [taskData.ownerId].filter(Boolean),
-      createdBy: user?.uid || undefined,
+      createdBy: user?.id || undefined,
     };
 
-    if (useFirestore && user?.uid) {
+    if (useFirestore && user?.id) {
       // Save to Firestore
       try {
-        await tasksAPI.createTask(newTaskData, user.uid);
+        await tasksAPI.createTask(newTaskData, user.id);
         // Real-time listener will update state automatically
       } catch (error) {
         console.error('Error creating task:', error);
@@ -268,7 +268,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       });
     }
     
-    if (useFirestore && user?.uid) {
+    if (useFirestore && user?.id) {
       // Delete from Firestore
       try {
         await tasksAPI.deleteTask(id);
@@ -434,10 +434,10 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
   // Member operations
   const addMember = useCallback(async (memberData: Omit<Member, 'id' | 'xp' | 'level'>) => {
-    if (useFirestore && user?.uid) {
+    if (useFirestore && user?.id) {
       // Save to Firestore
       try {
-        await membersAPI.createMember(memberData, user.uid);
+        await membersAPI.createMember(memberData, user.id);
         // Real-time listener will update state automatically
       } catch (error) {
         console.error('Error creating member:', error);
@@ -463,7 +463,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
   }, [generateId, useFirestore, user]);
 
   const updateMember = useCallback(async (id: string, updates: Partial<Member>) => {
-    if (useFirestore && user?.uid) {
+    if (useFirestore && user?.id) {
       // Update in Firestore
       try {
         await membersAPI.updateMember(id, updates);
@@ -487,7 +487,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     // Don't allow deleting if it's the only member
     if (members.length <= 1) return;
     
-    if (useFirestore && user?.uid) {
+    if (useFirestore && user?.id) {
       // Delete from Firestore
       try {
         // Delete all tasks owned by this member

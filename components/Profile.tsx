@@ -14,7 +14,7 @@ export function Profile() {
   const userTasks = tasks.filter(task => 
     task.assignedTo?.includes(member?.id || '') || 
     task.ownerId === member?.id ||
-    task.createdBy === user?.uid
+    task.createdBy === user?.id
   );
   const completedTasks = userTasks.filter(task => task.completed || task.status === 'completed');
   const inProgressTasks = userTasks.filter(task => task.status === 'in-progress');
@@ -52,7 +52,7 @@ export function Profile() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold">
-                  {member?.name || user?.displayName || 'User'}
+                  {member?.name || user?.name || 'User'}
                 </h1>
                 <p className="text-purple-100 text-sm mt-1">
                   {user?.email || 'No email'}
@@ -106,21 +106,10 @@ export function Profile() {
                 <h3 className="font-semibold text-gray-700 dark:text-gray-300">Display Name</h3>
               </div>
               <p className="text-gray-600 dark:text-gray-400">
-                {member?.name || user?.displayName || 'N/A'}
+                {member?.name || user?.name || 'N/A'}
               </p>
             </div>
 
-            {user?.metadata?.creationTime && (
-              <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  <h3 className="font-semibold text-gray-700 dark:text-gray-300">Account Created</h3>
-                </div>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {format(new Date(user.metadata.creationTime), 'dd/MM/yyyy')}
-                </p>
-              </div>
-            )}
 
             <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
               <div className="flex items-center gap-3 mb-2">
@@ -128,7 +117,7 @@ export function Profile() {
                 <h3 className="font-semibold text-gray-700 dark:text-gray-300">User ID</h3>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-500 font-mono break-all">
-                {user?.uid || 'N/A'}
+                {user?.id || 'N/A'}
               </p>
             </div>
           </div>

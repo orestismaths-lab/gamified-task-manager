@@ -1,68 +1,28 @@
-// Firestore Members API
+// Members API - Using localStorage (Firebase disabled)
 
-import { 
-  collection,
-  doc,
-  getDocs,
-  getDoc,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  QuerySnapshot,
-  DocumentData
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { Member } from '@/types';
-
-const MEMBERS_COLLECTION = 'members';
-
-// Convert Firestore document to Member
-const firestoreToMember = (doc: DocumentData): Member => {
-  const data = doc.data();
-  return {
-    id: doc.id,
-    name: data.name || '',
-    xp: data.xp || 0,
-    level: data.level || 1,
-    avatar: data.avatar,
-    userId: data.userId, // Link to Firebase Auth user
-    email: data.email,
-  };
-};
+import { storage } from '@/lib/storage';
 
 export const membersAPI = {
   // Get all members
   getMembers: async (): Promise<Member[]> => {
-    const membersRef = collection(db, MEMBERS_COLLECTION);
-    const q = query(membersRef, orderBy('name', 'asc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(firestoreToMember);
+    return storage.getMembers();
   },
 
   // Get single member
   getMember: async (memberId: string): Promise<Member | null> => {
-    const memberRef = doc(db, MEMBERS_COLLECTION, memberId);
-    const snapshot = await getDoc(memberRef);
-    if (!snapshot.exists()) return null;
-    return firestoreToMember(snapshot);
+    const members = storage.getMembers();
+    return members.find(m => m.id === memberId) || null;
   },
 
-  // Get member by userId (Firebase Auth)
+  // Get member by userId
   getMemberByUserId: async (userId: string): Promise<Member | null> => {
-    const membersRef = collection(db, MEMBERS_COLLECTION);
-    const q = query(membersRef, where('userId', '==', userId));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return null;
-    return firestoreToMember(snapshot.docs[0]);
+    const members = storage.getMembers();
+    return members.find(m => m.userId === userId) || null;
   },
 
   // Create member
   createMember: async (member: Omit<Member, 'id' | 'xp' | 'level'>, userId: string): Promise<string> => {
-    // Validate inputs
     if (!member.name || member.name.trim().length === 0) {
       throw new Error('Member name is required');
     }
@@ -70,16 +30,19 @@ export const membersAPI = {
       throw new Error('User ID is required');
     }
     
-    const membersRef = collection(db, MEMBERS_COLLECTION);
-    const memberData = {
+    const members = storage.getMembers();
+    const newMember: Member = {
       ...member,
+      id: `member-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name: member.name.trim(),
       userId,
       xp: 0,
       level: 1,
     };
-    const docRef = await addDoc(membersRef, memberData);
-    return docRef.id;
+    
+    members.push(newMember);
+    storage.saveMembers(members);
+    return newMember.id;
   },
 
   // Update member
@@ -88,37 +51,43 @@ export const membersAPI = {
       throw new Error('Member ID is required');
     }
     
-    const memberRef = doc(db, MEMBERS_COLLECTION, memberId);
-    const updateData: Record<string, unknown> = { ...updates };
-    // Remove id if present (should not be updated)
-    delete updateData.id;
-    // Trim name if present
+    const members = storage.getMembers();
+    const index = members.findIndex(m => m.id === memberId);
+    if (index === -1) {
+      throw new Error('Member not found');
+    }
+    
     if (updates.name && typeof updates.name === 'string') {
       const trimmedName = updates.name.trim();
       if (trimmedName.length === 0) {
         throw new Error('Member name cannot be empty');
       }
-      updateData.name = trimmedName;
+      updates.name = trimmedName;
     }
     
-    await updateDoc(memberRef, updateData);
+    members[index] = { ...members[index], ...updates };
+    storage.saveMembers(members);
   },
 
   // Delete member
   deleteMember: async (memberId: string): Promise<void> => {
-    const memberRef = doc(db, MEMBERS_COLLECTION, memberId);
-    await deleteDoc(memberRef);
+    const members = storage.getMembers();
+    const filtered = members.filter(m => m.id !== memberId);
+    storage.saveMembers(filtered);
   },
 
-  // Real-time listener
+  // Real-time listener (simplified - just return current members)
   subscribeToMembers: (callback: (members: Member[]) => void): (() => void) => {
-    const membersRef = collection(db, MEMBERS_COLLECTION);
-    const q = query(membersRef, orderBy('name', 'asc'));
-
-    return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
-      const members = snapshot.docs.map(firestoreToMember);
-      callback(members);
-    });
+    // Call immediately with current members
+    const members = storage.getMembers();
+    callback(members);
+    
+    // Poll every 2 seconds for changes (simplified real-time)
+    const interval = setInterval(() => {
+      const currentMembers = storage.getMembers();
+      callback(currentMembers);
+    }, 2000);
+    
+    return () => clearInterval(interval);
   },
 };
-

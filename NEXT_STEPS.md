@@ -1,133 +1,91 @@
-# 📋 Next Steps - Τι έχει μείνει να κάνεις
+# 📋 Next Steps – Χωρίς Firebase
 
-## ✅ Τι έχει ολοκληρωθεί (από μέρους μου):
+## ✅ Τι έχει γίνει ήδη
 
-1. ✅ **Firebase Configuration** - Το config είναι setup
-2. ✅ **Authentication System** - Login/Register ready
-3. ✅ **Multi-user Support** - Task assignment ready
-4. ✅ **Code Review** - Όλα τα bugs διορθώθηκαν
-5. ✅ **Build** - Compiles successfully
-
----
-
-## 🔴 Τι χρειάζεται να κάνεις ΕΣΥ:
-
-### 1. **Firestore Security Rules** (ΑΠΑΡΑΊΤΗΤΟ) 🔒
-
-**Γιατί:** Χωρίς security rules, οποιοσδήποτε μπορεί να διαβάσει/γράψει τα δεδομένα σου!
-
-**Πώς:**
-1. Πήγαινε στο: https://console.firebase.google.com
-2. Επίλεξε το project: `gamified-task-manager-3e2a4`
-3. **Firestore Database** → **Rules** tab
-4. Copy-paste τα rules από το `FIRESTORE_SECURITY_RULES.md`
-5. Κάνε **"Publish"**
-
-**⏱️ Χρόνος:** 2-3 λεπτά
+- ✅ Next.js 14 + TypeScript app
+- ✅ Πλήρης Task Manager με gamification
+- ✅ Custom backend με **Prisma + SQLite** για users/tasks (όχι Firebase)
+- ✅ Auth με email/password
 
 ---
 
-### 2. **Test την Εφαρμογή** 🧪
+## 🔴 1. Δοκίμασε την εφαρμογή τοπικά
 
-**Local Testing:**
 ```bash
 cd task_manager
+npm install
 npm run dev
 ```
 
-**Τι να δοκιμάσεις:**
-1. ✅ Register/Login (Email ή Google)
-2. ✅ Create tasks
-3. ✅ Assign tasks to multiple members
-4. ✅ Edit tasks
-5. ✅ Delete tasks
-6. ✅ Real-time sync (άνοιξε 2 browsers)
+Άνοιξε `http://localhost:3000` και:
 
-**⏱️ Χρόνος:** 10-15 λεπτά
+1. Κάνε **Register** με νέο email/password
+2. Κάνε **Login**
+3. Δοκίμασε:
+   - Δημιουργία / επεξεργασία / διαγραφή tasks
+   - Ανάθεση σε μέλη
+   - Kanban board, calendar view, statistics
+   - Gamification (XP, levels, achievements)
 
----
-
-### 3. **Environment Variables** (Optional) 🔐
-
-Αν θέλεις να κρύψεις το Firebase config:
-
-1. Δημιούργησε `.env.local`:
-```env
-NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyBqYpcWeIVhsYxOgw4bNZIs2EPOVPQPvsA
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=gamified-task-manager-3e2a4.firebaseapp.com
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=gamified-task-manager-3e2a4
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=gamified-task-manager-3e2a4.firebasestorage.app
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=597365672090
-NEXT_PUBLIC_FIREBASE_APP_ID=1:597365672090:web:6ac3bdde323721cb18f723
-NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=G-P6DYB5RDKN
-```
-
-2. Update `lib/firebase.ts` να διαβάζει από `process.env`
-
-**⏱️ Χρόνος:** 5 λεπτά (optional)
+⏱️ Εκτίμηση: 10‑15 λεπτά χρήσης.
 
 ---
 
-### 4. **Deploy την Εφαρμογή** (Optional) 🚀
+## 🟡 2. Έλεγχος multi‑user σε ένα περιβάλλον
 
-**Vercel (Recommended):**
-1. Πήγαινε στο: https://vercel.com
-2. Sign in με GitHub
-3. Import το repository: `orestismaths-lab/gamified-task-manager`
-4. **Root Directory:** `task_manager`
-5. Deploy!
-
-**⏱️ Χρόνος:** 5-10 λεπτά
+1. Άνοιξε την εφαρμογή σε **2 διαφορετικά browsers** ή profiles
+2. Κάνε register/login με **διαφορετικά accounts**
+3. Βεβαιώσου ότι:
+   - Ο κάθε χρήστης βλέπει **τα δικά του δεδομένα**
+   - Δεν “μπερδεύονται” tasks μεταξύ χρηστών
 
 ---
 
-## 📊 Priority Order:
+## 🟢 3. Προετοιμασία για παράδοση / demo
 
-### 🔴 HIGH PRIORITY (Κάνε ΤΩΡΑ):
-1. **Firestore Security Rules** - Απαραίτητο για security!
+### A. Scripts (ήδη υπάρχουν)
 
-### 🟡 MEDIUM PRIORITY (Κάνε Σύντομα):
-2. **Test την εφαρμογή** - Βεβαιώσου ότι όλα δουλεύουν
+- `SETUP_AND_TEST.bat` – full αυτόματο setup + εκκίνηση
+- `QUICK_START.bat` – γρήγορη εκκίνηση αν τα dependencies υπάρχουν
 
-### 🟢 LOW PRIORITY (Optional):
-3. **Environment Variables** - Αν θέλεις extra security
-4. **Deploy** - Αν θέλεις να την μοιραστείς
+Μπορείς να τα χρησιμοποιήσεις σε demo / εργαστήριο ώστε οι χρήστες να ξεκινάνε με διπλό κλικ.
 
----
+### B. Μικρός “οδηγός χρήσης”
 
-## 🆘 Αν έχεις Προβλήματα:
+Προτείνεται να γράψεις/προσθέσουμε ένα 1‑pager (π.χ. σε `docs/USAGE_OVERVIEW.md`) με:
 
-### "Cannot connect to Firestore"
-- ✅ Έλεγξε ότι τα Security Rules είναι published
-- ✅ Έλεγξε ότι είσαι logged in
-
-### "Permission denied"
-- ✅ Έλεγξε τα Security Rules
-- ✅ Βεβαιώσου ότι είσαι authenticated
-
-### "Build fails"
-- ✅ Run `npm install` ξανά
-- ✅ Delete `.next` folder και rebuild
+- Πώς κάνω login
+- Πώς δημιουργώ task
+- Πώς αναθέτω σε μέλος
+- Πού βλέπω XP / επίπεδα
 
 ---
 
-## 📝 Summary:
+## 🚀 4. Deploy (Optional)
 
-**Minimum (για να δουλεύει):**
-1. ✅ Firestore Security Rules
+Η εφαρμογή μπορεί να τρέχει άνετα μόνο on‑premise (τοπικός server / εταιρικό περιβάλλον).  
+Αν θέλεις και **public demo**:
 
-**Recommended:**
-1. ✅ Firestore Security Rules
-2. ✅ Test locally
-3. ✅ Deploy to Vercel
-
-**Everything:**
-1. ✅ Firestore Security Rules
-2. ✅ Test locally
-3. ✅ Environment Variables
-4. ✅ Deploy to Vercel
+1. Κάνε push το repo σε GitHub (root: project με φάκελο `task_manager`)
+2. Στο Vercel:
+   - New Project → Import από GitHub
+   - **Root Directory:** `task_manager`
+   - Deploy
+3. Η SQLite DB θα είναι local στο server του Vercel – για πιο “σοβαρή” multi‑user χρήση μπορείς αργότερα να συνδέσεις Postgres.
 
 ---
 
-**Καλή τύχη! 🚀**
+## 🔚 Σύνοψη
+
+**Minimum για να θεωρούμε το project “έτοιμο”:**
+
+1. ✅ Τρέχεις local χωρίς errors
+2. ✅ Κάνεις register/login και βασικές ενέργειες tasks
+
+**Recommended για παράδοση:**
+
+1. ✅ Δοκιμή multi‑user σε 2 browsers
+2. ✅ Μικρός οδηγός χρήσης (user‑facing)
+3. ✅ (Προαιρετικά) Deploy σε Vercel ή εσωτερικό server
+
 

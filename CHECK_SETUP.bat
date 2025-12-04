@@ -34,26 +34,7 @@ if exist "node_modules" (
 )
 echo.
 
-echo [4] Firebase Config:
-if exist "lib\firebase.ts" (
-    findstr /C:"apiKey" lib\firebase.ts >nul 2>&1
-    if %errorlevel% equ 0 (
-        echo ✅ Firebase config file exists
-        findstr /C:"AIzaSy" lib\firebase.ts >nul 2>&1
-        if %errorlevel% equ 0 (
-            echo ✅ API key found in config
-        ) else (
-            echo ⚠️  API key might need update from Firebase Console
-        )
-    ) else (
-        echo ⚠️  Firebase config might be incomplete
-    )
-) else (
-    echo ❌ Firebase config file missing
-)
-echo.
-
-echo [5] Git:
+echo [4] Git:
 where git >nul 2>&1
 if %errorlevel% equ 0 (
     git --version
@@ -65,7 +46,7 @@ if %errorlevel% equ 0 (
         echo ⚠️  Git remote not configured
     )
 ) else (
-    echo ⚠️  Git not found (optional)
+echo ⚠️  Git not found (optional)
 )
 echo.
 
