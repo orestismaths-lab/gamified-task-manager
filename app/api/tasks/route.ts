@@ -82,15 +82,15 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: Task[
     logError('Tasks API - GET', { message: `Fetched ${tasks.length} tasks from database` });
 
     // Transform to frontend format
-    const transformedTasks: Task[] = tasks.map((task) => {
+    const transformedTasks: Task[] = tasks.flatMap((task) => {
       try {
         // Validate required fields
         if (!task.id || !task.title) {
           logError('Tasks API - GET', { message: `Skipping task with missing id or title`, taskId: task.id });
-          return null;
+          return [];
         }
 
-        return {
+        return [{
           id: task.id,
           title: task.title,
           description: task.description || undefined,
@@ -117,12 +117,12 @@ export async function GET(req: NextRequest): Promise<NextResponse<{ tasks: Task[
           updatedAt: task.updatedAt.toISOString(),
           assignedTo: (task.assignments || []).map((a) => a.userId).filter((id): id is string => !!id),
           createdBy: task.createdById,
-        };
+        }];
       } catch (mapError) {
         logError('Tasks API - GET', mapError, { taskId: task.id, taskTitle: task.title });
-        return null;
+        return [];
       }
-    }).filter((task): task is Task => task !== null);
+    });
 
     logError('Tasks API - GET', { message: `Returning ${transformedTasks.length} transformed tasks` });
     return NextResponse.json({ tasks: transformedTasks });
