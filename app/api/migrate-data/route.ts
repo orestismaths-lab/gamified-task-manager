@@ -170,16 +170,24 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
       logError('[migrate-data] Processing members', { count: members.length, userEmail: user.email, userId: user.id });
       
       // Find member that matches current user
-      // Try multiple matching strategies
-      const userMember = members.find(m => {
-        // Match by userId if available
-        if (m.userId && m.userId === user.id) return true;
-        // Match by email
-        if (m.email && m.email.toLowerCase() === user.email?.toLowerCase()) return true;
-        // Match by name (as fallback)
-        if (m.name && user.name && m.name.toLowerCase() === user.name.toLowerCase()) return true;
-        return false;
-      });
+      // Try multiple matching strategies (prioritize userId, then email, then name)
+      let userMember = members.find(m => m.userId && m.userId === user.id);
+      
+      if (!userMember) {
+        userMember = members.find(m => {
+          const memberEmail = m.email?.toLowerCase().trim();
+          const userEmail = user.email?.toLowerCase().trim();
+          return memberEmail && userEmail && memberEmail === userEmail;
+        });
+      }
+      
+      if (!userMember && user.name) {
+        userMember = members.find(m => {
+          const memberName = m.name?.toLowerCase().trim();
+          const userName = user.name?.toLowerCase().trim();
+          return memberName && userName && memberName === userName;
+        });
+      }
       
       logError('[migrate-data] Member matching result', {
         found: !!userMember,
@@ -189,6 +197,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
         userEmail: user.email,
         userId: user.id,
         userName: user.name,
+        allMemberEmails: members.map(m => m.email).filter(Boolean),
+        allMemberUserIds: members.map(m => m.userId).filter(Boolean),
       });
       
       if (userMember) {
