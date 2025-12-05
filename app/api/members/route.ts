@@ -44,15 +44,15 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
 
     // Convert users to members format with XP/level from database
     const userMembers: Member[] = users
-      .map((user) => {
+      .flatMap((user) => {
         try {
           // Validate required fields
           if (!user.id || !user.email) {
             logError('Members API - GET', { message: `Skipping user with missing id or email`, user });
-            return null;
+            return [];
           }
 
-          return {
+          return [{
             id: user.id,
             name: user.name || user.email.split('@')[0] || 'User',
             email: user.email,
@@ -60,13 +60,12 @@ export async function GET(): Promise<NextResponse<{ members: Member[] } | { erro
             avatar: user.avatar || undefined,
             xp: user.memberProfile?.xp ?? 0, // Get XP from database, default to 0
             level: user.memberProfile?.level ?? 1, // Get level from database, default to 1
-          };
+          }];
         } catch (mapError) {
           logError('Members API - GET', mapError, { userId: user.id, userEmail: user.email });
-          return null;
+          return [];
         }
-      })
-      .filter((member): member is Member => member !== null);
+      });
 
     logError('Members API - GET', { message: `Returning ${userMembers.length} members` });
     return NextResponse.json({ members: userMembers });
