@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { handleDatabaseError, handleValidationError, logError } from '@/lib/utils/errors';
 import { getSessionUser } from '@/lib/utils/session';
+import { sanitizeTaskTitle, sanitizeTaskDescription, sanitizeStringArray } from '@/lib/utils/sanitize';
 import type { UserPublic } from '@/lib/types/auth';
 import type { Task, Priority, TaskStatus } from '@/types';
 
