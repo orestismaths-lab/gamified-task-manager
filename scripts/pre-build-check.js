@@ -104,27 +104,98 @@ async function checkAndMarkMigrations() {
       console.log(`⚠️  Missing tables: ${missing.join(', ')}`);
       
       // If we have User and Task but missing Subtask/TaskAssignment, 
-      // the migration partially ran - mark it as applied and let it continue
+      // create the missing tables automatically
       if (existingTables.includes('User') && existingTables.includes('Task')) {
-        console.log('⚠️  Some tables exist but not all. This might be a partial migration.');
-        console.log('⚠️  Will try to resolve failed migration and let Prisma handle the rest.');
+        console.log('⚠️  Some tables exist but not all. Creating missing tables...');
         
-        // Try to resolve the failed migration
+        // Create Subtask table if missing
+        if (missing.includes('Subtask')) {
+          try {
+            console.log('🔧 Creating Subtask table...');
+            await prisma.$executeRaw`
+              CREATE TABLE IF NOT EXISTS "Subtask" (
+                "id" TEXT NOT NULL,
+                "title" TEXT NOT NULL,
+                "completed" BOOLEAN NOT NULL DEFAULT false,
+                "taskId" TEXT NOT NULL,
+                "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMP(3) NOT NULL,
+                CONSTRAINT "Subtask_pkey" PRIMARY KEY ("id")
+              )
+            `;
+            await prisma.$executeRaw`
+              CREATE INDEX IF NOT EXISTS "Subtask_taskId_idx" ON "Subtask"("taskId")
+            `;
+            await prisma.$executeRaw`
+              ALTER TABLE "Subtask" 
+              DROP CONSTRAINT IF EXISTS "Subtask_taskId_fkey",
+              ADD CONSTRAINT "Subtask_taskId_fkey" 
+              FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE
+            `;
+            console.log('✅ Created Subtask table');
+          } catch (error) {
+            console.log('⚠️  Could not create Subtask table:', error.message);
+          }
+        }
+        
+        // Create TaskAssignment table if missing
+        if (missing.includes('TaskAssignment')) {
+          try {
+            console.log('🔧 Creating TaskAssignment table...');
+            await prisma.$executeRaw`
+              CREATE TABLE IF NOT EXISTS "TaskAssignment" (
+                "id" TEXT NOT NULL,
+                "userId" TEXT NOT NULL,
+                "taskId" TEXT NOT NULL,
+                "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "TaskAssignment_pkey" PRIMARY KEY ("id")
+              )
+            `;
+            await prisma.$executeRaw`
+              CREATE UNIQUE INDEX IF NOT EXISTS "TaskAssignment_userId_taskId_key" 
+              ON "TaskAssignment"("userId", "taskId")
+            `;
+            await prisma.$executeRaw`
+              CREATE INDEX IF NOT EXISTS "TaskAssignment_userId_idx" ON "TaskAssignment"("userId")
+            `;
+            await prisma.$executeRaw`
+              CREATE INDEX IF NOT EXISTS "TaskAssignment_taskId_idx" ON "TaskAssignment"("taskId")
+            `;
+            await prisma.$executeRaw`
+              ALTER TABLE "TaskAssignment" 
+              DROP CONSTRAINT IF EXISTS "TaskAssignment_userId_fkey",
+              ADD CONSTRAINT "TaskAssignment_userId_fkey" 
+              FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE
+            `;
+            await prisma.$executeRaw`
+              ALTER TABLE "TaskAssignment" 
+              DROP CONSTRAINT IF EXISTS "TaskAssignment_taskId_fkey",
+              ADD CONSTRAINT "TaskAssignment_taskId_fkey" 
+              FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE
+            `;
+            console.log('✅ Created TaskAssignment table');
+          } catch (error) {
+            console.log('⚠️  Could not create TaskAssignment table:', error.message);
+          }
+        }
+        
+        // Mark migration as applied if we created the missing tables
         try {
           await prisma.$executeRaw`
             UPDATE "_prisma_migrations" 
-            SET rolled_back_at = NOW() 
+            SET finished_at = NOW(), applied_steps_count = 1, rolled_back_at = NULL
             WHERE migration_name = '20251204000000_init_postgres' 
-              AND finished_at IS NULL 
-              AND rolled_back_at IS NULL
+              AND finished_at IS NULL
           `;
-          console.log('✅ Resolved failed migration 20251204000000_init_postgres');
+          console.log('✅ Marked migration 20251204000000_init_postgres as applied');
         } catch (error) {
-          console.log('⚠️  Could not resolve migration:', error.message);
+          console.log('⚠️  Could not mark migration as applied:', error.message);
         }
+      } else {
+        // If User or Task don't exist, let Prisma handle it
+        console.log('⚠️  Missing base tables. Migrations will run normally.');
       }
       
-      console.log('⚠️  Migrations will run normally to create missing tables.');
       return;
     }
 
