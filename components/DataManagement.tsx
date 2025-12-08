@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Download, Upload, Database, AlertCircle, CheckCircle } from 'lucide-react';
 import { backup } from '@/lib/backup';
 import { storage } from '@/lib/storage';
+import { DatabaseStorageTest } from './StorageIndicator';
 
 export function DataManagement() {
   const [importStatus, setImportStatus] = useState<{ type: 'success' | 'error' | null; message: string }>({ type: null, message: '' });
@@ -52,6 +53,9 @@ export function DataManagement() {
         </h1>
         <p className="text-gray-600 mt-1">Backup, restore, and manage your data</p>
       </div>
+
+      {/* Database Storage Test */}
+      <DatabaseStorageTest />
 
       {/* Storage Info */}
       {storageInfo && (

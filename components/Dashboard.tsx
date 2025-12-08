@@ -25,6 +25,7 @@ import { setupNotificationCheck } from '@/lib/notifications';
 import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from './AuthModal';
 import { MemberSelectionModal } from './MemberSelectionModal';
+import { StorageIndicator } from './StorageIndicator';
 
 type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export' | 'profile';
 
@@ -375,6 +376,9 @@ export function Dashboard() {
           </div>
         ) : null}
       </div>
+      
+      {/* Storage Indicator - Shows if tasks are in database or localStorage */}
+      <StorageIndicator />
     </div>
     </>
   );
