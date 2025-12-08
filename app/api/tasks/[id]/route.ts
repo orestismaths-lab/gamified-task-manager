@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { handleDatabaseError, handleValidationError, logError } from '@/lib/utils/errors';
 import { getSessionUser } from '@/lib/utils/session';
+import { sanitizeTaskTitle, sanitizeTaskDescription, sanitizeStringArray } from '@/lib/utils/sanitize';
 import type { UserPublic } from '@/lib/types/auth';
 import type { Task, Priority, TaskStatus } from '@/types';
 
@@ -170,55 +171,77 @@ export async function PUT(
       completed?: boolean;
     } = {};
 
-    if (updates.title && typeof updates.title === 'string') {
-      updateData.title = updates.title.trim();
+    // Validate and sanitize title
+    if (updates.title !== undefined) {
+      const sanitizedTitle = sanitizeTaskTitle(updates.title);
+      if (!sanitizedTitle) {
+        return handleValidationError(['Task title cannot be empty']);
+      }
+      if (sanitizedTitle.length > 500) {
+        return handleValidationError(['Task title must be 500 characters or less']);
+      }
+      updateData.title = sanitizedTitle;
     }
+
+    // Validate and sanitize description
     if (updates.description !== undefined) {
-      updateData.description = updates.description as string | null;
+      const sanitizedDesc = sanitizeTaskDescription(updates.description);
+      if (sanitizedDesc !== null && sanitizedDesc.length > 5000) {
+        return handleValidationError(['Task description must be 5000 characters or less']);
+      }
+      updateData.description = sanitizedDesc;
     }
+
+    // Validate priority
     if (updates.priority !== undefined) {
-      const validPriorities = ['low', 'medium', 'high'];
-      if (typeof updates.priority === 'string' && validPriorities.includes(updates.priority)) {
+      const validPriorities = ['low', 'medium', 'high'] as const;
+      if (typeof updates.priority === 'string' && validPriorities.includes(updates.priority as typeof validPriorities[number])) {
         updateData.priority = updates.priority;
       } else {
-        return handleValidationError([`Invalid priority: ${updates.priority}. Must be one of: ${validPriorities.join(', ')}`]);
+        return handleValidationError(['Priority must be one of: low, medium, high']);
       }
     }
+
+    // Validate status
     if (updates.status !== undefined) {
-      const validStatuses = ['todo', 'in-progress', 'in-review', 'blocked', 'completed'];
-      if (typeof updates.status === 'string' && validStatuses.includes(updates.status)) {
+      const validStatuses = ['todo', 'in-progress', 'in-review', 'blocked', 'completed'] as const;
+      if (typeof updates.status === 'string' && validStatuses.includes(updates.status as typeof validStatuses[number])) {
         updateData.status = updates.status;
         updateData.completed = updates.status === 'completed';
       } else {
-        return handleValidationError([`Invalid status: ${updates.status}. Must be one of: ${validStatuses.join(', ')}`]);
+        return handleValidationError(['Status must be one of: todo, in-progress, in-review, blocked, completed']);
       }
     }
+
+    // Validate dueDate
     if (updates.dueDate !== undefined) {
-      if (updates.dueDate === null || updates.dueDate === '') {
+      if (updates.dueDate === null) {
         updateData.dueDate = null;
       } else if (typeof updates.dueDate === 'string') {
         const parsedDate = new Date(updates.dueDate);
         if (!isNaN(parsedDate.getTime())) {
           updateData.dueDate = parsedDate;
         } else {
-          return handleValidationError([`Invalid date format: ${updates.dueDate}`]);
+          return handleValidationError(['Invalid due date format']);
         }
       } else {
-        return handleValidationError(['dueDate must be a string or null']);
+        return handleValidationError(['Due date must be a valid date string or null']);
       }
     }
+
+    // Validate and sanitize tags
     if (updates.tags !== undefined) {
+      if (!Array.isArray(updates.tags)) {
+        return handleValidationError(['Tags must be an array']);
+      }
       try {
-        updateData.tags = Array.isArray(updates.tags) ? JSON.stringify(updates.tags) : '[]';
+        const sanitizedTags = sanitizeStringArray(updates.tags);
+        updateData.tags = JSON.stringify(sanitizedTags);
       } catch {
-        updateData.tags = '[]';
+        return handleValidationError(['Invalid tags format']);
       }
     }
-    if (updates.status === 'completed') {
-      updateData.completed = true;
-    } else if (updates.status && updates.status !== 'completed') {
-      updateData.completed = false;
-    }
+
 
     // Update task
     const task = await prisma.task.update({
@@ -247,10 +270,16 @@ export async function PUT(
       },
     });
 
-    // Update assignments if provided
-    if (updates.assignedTo !== undefined && Array.isArray(updates.assignedTo)) {
+    // Update assignments if provided (use transaction for atomicity)
+    if (updates.assignedTo !== undefined) {
+      if (!Array.isArray(updates.assignedTo)) {
+        return handleValidationError(['assignedTo must be an array']);
+      }
+
       // Validate user IDs
-      const validUserIds = updates.assignedTo.filter((id): id is string => typeof id === 'string');
+      const validUserIds = updates.assignedTo
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+        .filter((id, index, self) => self.indexOf(id) === index); // Remove duplicates
       
       // Verify all assigned users exist
       if (validUserIds.length > 0) {
@@ -266,44 +295,71 @@ export async function PUT(
         }
       }
       
-      // Delete existing assignments
-      await prisma.taskAssignment.deleteMany({
-        where: { taskId: params.id },
-      });
-      
-      // Create new assignments
-      if (validUserIds.length > 0) {
-        await prisma.taskAssignment.createMany({
-          data: validUserIds.map((userId) => ({
-            taskId: params.id,
-            userId,
-          })),
+      // Use transaction for atomic assignment update
+      await prisma.$transaction(async (tx) => {
+        // Delete existing assignments
+        await tx.taskAssignment.deleteMany({
+          where: { taskId: params.id },
         });
-      }
+        
+        // Create new assignments
+        if (validUserIds.length > 0) {
+          await tx.taskAssignment.createMany({
+            data: validUserIds.map((userId) => ({
+              taskId: params.id,
+              userId,
+            })),
+            skipDuplicates: true, // Prevent duplicate key errors
+          });
+        }
+      });
     }
 
-    // Update subtasks if provided
-    if (updates.subtasks !== undefined && Array.isArray(updates.subtasks)) {
-      // Delete existing subtasks
-      await prisma.subtask.deleteMany({
-        where: { taskId: params.id },
-      });
-      
-      // Create new subtasks (with validation)
+    // Update subtasks if provided (use transaction for atomicity)
+    if (updates.subtasks !== undefined) {
+      if (!Array.isArray(updates.subtasks)) {
+        return handleValidationError(['subtasks must be an array']);
+      }
+
+      // Validate and sanitize subtasks
       const validSubtasks = updates.subtasks
         .filter((st): st is { title?: unknown; completed?: unknown } => 
           st !== null && typeof st === 'object'
         )
-        .map((st) => ({
-          taskId: params.id,
-          title: typeof st.title === 'string' ? st.title.trim() : '',
-          completed: typeof st.completed === 'boolean' ? st.completed : false,
-        }));
-      
-      if (validSubtasks.length > 0) {
-        await prisma.subtask.createMany({
-          data: validSubtasks,
+        .map((st) => {
+          const sanitizedTitle = sanitizeTaskTitle(st.title) || '';
+          if (sanitizedTitle.length > 500) {
+            throw new Error('Subtask title must be 500 characters or less');
+          }
+          return {
+            taskId: params.id,
+            title: sanitizedTitle,
+            completed: typeof st.completed === 'boolean' ? st.completed : false,
+          };
+        })
+        .filter(st => st.title.length > 0) // Remove empty subtasks
+        .slice(0, 50); // Limit to 50 subtasks max
+
+      // Use transaction for atomic subtask update
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Delete existing subtasks
+          await tx.subtask.deleteMany({
+            where: { taskId: params.id },
+          });
+          
+          // Create new subtasks
+          if (validSubtasks.length > 0) {
+            await tx.subtask.createMany({
+              data: validSubtasks,
+            });
+          }
         });
+      } catch (error) {
+        if (error instanceof Error && error.message.includes('500 characters')) {
+          return handleValidationError([error.message]);
+        }
+        throw error;
       }
     }
 

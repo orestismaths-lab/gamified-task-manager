@@ -185,37 +185,82 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ task: Task 
       }
     }
 
+    // Validate priority and status enums
+    const validPriorities = ['low', 'medium', 'high'] as const;
+    const validStatuses = ['todo', 'in-progress', 'in-review', 'blocked', 'completed'] as const;
+    
+    const priority = (typeof taskData.priority === 'string' && validPriorities.includes(taskData.priority as typeof validPriorities[number]))
+      ? (taskData.priority as Priority)
+      : 'medium';
+    
+    const status = (typeof taskData.status === 'string' && validStatuses.includes(taskData.status as typeof validStatuses[number]))
+      ? (taskData.status as TaskStatus)
+      : 'todo';
+
+    // Validate and parse dueDate
+    let dueDate: Date | null = null;
+    if (taskData.dueDate) {
+      if (typeof taskData.dueDate === 'string') {
+        const parsedDate = new Date(taskData.dueDate);
+        if (!isNaN(parsedDate.getTime())) {
+          dueDate = parsedDate;
+        }
+      }
+    }
+
+    // Sanitize and validate title
+    const sanitizedTitle = sanitizeTaskTitle(taskData.title);
+    if (!sanitizedTitle) {
+      return handleValidationError(['Task title is required and must be valid']);
+    }
+    if (sanitizedTitle.length > 500) {
+      return handleValidationError(['Task title must be 500 characters or less']);
+    }
+
+    // Sanitize and validate description
+    const description = sanitizeTaskDescription(taskData.description);
+    if (description !== null && description.length > 5000) {
+      return handleValidationError(['Task description must be 5000 characters or less']);
+    }
+
     // Create task with assignments
     const task = await prisma.task.create({
       data: {
-        title: taskData.title.trim(),
-        description: typeof taskData.description === 'string' ? taskData.description : null,
-        priority: (taskData.priority as string) || 'medium',
-        status: (taskData.status as string) || 'todo',
-        dueDate: taskData.dueDate ? new Date(taskData.dueDate as string) : null,
+        title: sanitizedTitle,
+        description,
+        priority,
+        status,
+        dueDate,
         tags: (() => {
           try {
-            return taskData.tags && Array.isArray(taskData.tags) 
-              ? JSON.stringify(taskData.tags) 
-              : '[]';
+            if (Array.isArray(taskData.tags)) {
+              const sanitizedTags = sanitizeStringArray(taskData.tags);
+              return JSON.stringify(sanitizedTags);
+            }
+            return '[]';
           } catch {
             return '[]';
           }
         })(),
         completed: taskData.status === 'completed',
         createdById: user.id,
-        subtasks: {
-          create: Array.isArray(taskData.subtasks)
-            ? taskData.subtasks
-                .filter((st): st is { title?: unknown; completed?: unknown } => 
-                  st !== null && typeof st === 'object'
-                )
-                .map((st) => ({
-                  title: typeof st.title === 'string' ? st.title.trim() : '',
-                  completed: typeof st.completed === 'boolean' ? st.completed : false,
-                }))
-            : [],
-        },
+              subtasks: {
+                create: Array.isArray(taskData.subtasks)
+                  ? taskData.subtasks
+                      .filter((st): st is { title?: unknown; completed?: unknown } => 
+                        st !== null && typeof st === 'object'
+                      )
+                      .map((st) => {
+                        const sanitizedSubtaskTitle = sanitizeTaskTitle(st.title);
+                        return {
+                          title: sanitizedSubtaskTitle || '',
+                          completed: typeof st.completed === 'boolean' ? st.completed : false,
+                        };
+                      })
+                      .filter(st => st.title.length > 0) // Remove empty subtasks
+                      .slice(0, 50) // Limit to 50 subtasks max
+                  : [],
+              },
         assignments: {
           create: assignedToUserIds.map((userId: string) => ({
             userId,

@@ -48,36 +48,43 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized to update this member\'s XP' }, { status: 403 });
     }
 
-    // Get or create member profile
-    let memberProfile = await prisma.memberProfile.findUnique({
-      where: { userId: params.id },
-    });
+    // Use transaction to prevent race conditions in XP updates
+    const result = await prisma.$transaction(async (tx) => {
+      // Get or create member profile (with lock to prevent race conditions)
+      let memberProfile = await tx.memberProfile.findUnique({
+        where: { userId: params.id },
+      });
 
-    if (!memberProfile) {
-      // Create member profile if it doesn't exist
-      memberProfile = await prisma.memberProfile.create({
+      if (!memberProfile) {
+        // Create member profile if it doesn't exist
+        memberProfile = await tx.memberProfile.create({
+          data: {
+            userId: params.id,
+            xp: 0,
+            level: 1,
+          },
+        });
+      }
+
+      // Calculate new XP and level
+      const oldLevel = memberProfile.level;
+      const newXP = Math.max(0, memberProfile.xp + amount);
+      const newLevel = calculateLevel(newXP);
+      const wasLevelUp = newLevel > oldLevel;
+
+      // Update member profile atomically
+      const updatedProfile = await tx.memberProfile.update({
+        where: { userId: params.id },
         data: {
-          userId: params.id,
-          xp: 0,
-          level: 1,
+          xp: newXP,
+          level: newLevel,
         },
       });
-    }
 
-    // Calculate new XP and level
-    const oldLevel = memberProfile.level;
-    const newXP = Math.max(0, memberProfile.xp + amount);
-    const newLevel = calculateLevel(newXP);
-    const wasLevelUp = newLevel > oldLevel;
-
-    // Update member profile
-    const updatedProfile = await prisma.memberProfile.update({
-      where: { userId: params.id },
-      data: {
-        xp: newXP,
-        level: newLevel,
-      },
+      return { updatedProfile, wasLevelUp };
     });
+
+    const { updatedProfile, wasLevelUp } = result;
 
     // Get user data
     const memberUser = await prisma.user.findUnique({

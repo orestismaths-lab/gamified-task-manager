@@ -104,7 +104,12 @@ export async function getSessionUser(req: NextRequest): Promise<UserPublic | nul
 
     return user;
   } catch (error) {
-    console.error('getSessionUser error:', error);
+    // Use logError instead of console.error for consistency
+    // Import would cause circular dependency, so we use console.error here
+    // but this is acceptable as it's a utility function
+    if (process.env.NODE_ENV === 'development') {
+      console.error('getSessionUser error:', error);
+    }
     return null;
   }
 }
