@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(apiUser);
       
       if (apiUser) {
-        // Load member profile (don't create automatically - user must select during sign up)
+        // Load member profile (automatically created during sign-up)
         try {
           const userMember = await membersAPI.getMemberByUserId(apiUser.id);
           

@@ -24,7 +24,6 @@ import { triggerConfetti } from '@/lib/confetti';
 import { setupNotificationCheck } from '@/lib/notifications';
 import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from './AuthModal';
-import { MemberSelectionModal } from './MemberSelectionModal';
 import { StorageIndicator } from './StorageIndicator';
 import { DataMigration } from './DataMigration';
 
@@ -33,7 +32,6 @@ type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'cal
 export function Dashboard() {
   const { user, member, loading: authLoading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showMemberSelectionModal, setShowMemberSelectionModal] = useState(false);
   const [activeView, setActiveView] = useState<ViewType>('tasks');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
   const [hasMigrated, setHasMigrated] = useState<boolean | null>(null); // null = loading, true/false = loaded
@@ -55,15 +53,6 @@ export function Dashboard() {
       setShowAuthModal(true);
     }
   }, [user, authLoading]);
-
-  // Show member selection modal if logged in but no member profile
-  useEffect(() => {
-    if (!authLoading && user && !member) {
-      setShowMemberSelectionModal(true);
-    } else {
-      setShowMemberSelectionModal(false);
-    }
-  }, [user, member, authLoading]);
 
   // Check migration status when user is logged in
   useEffect(() => {
