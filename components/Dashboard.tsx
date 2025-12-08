@@ -26,6 +26,7 @@ import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from './AuthModal';
 import { MemberSelectionModal } from './MemberSelectionModal';
 import { StorageIndicator } from './StorageIndicator';
+import { DataMigration } from './DataMigration';
 
 type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export' | 'profile';
 
@@ -35,6 +36,7 @@ export function Dashboard() {
   const [showMemberSelectionModal, setShowMemberSelectionModal] = useState(false);
   const [activeView, setActiveView] = useState<ViewType>('tasks');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('kanban');
+  const [hasMigrated, setHasMigrated] = useState<boolean | null>(null); // null = loading, true/false = loaded
   const {
     filteredTasks,
     tasks,
@@ -62,6 +64,27 @@ export function Dashboard() {
       setShowMemberSelectionModal(false);
     }
   }, [user, member, authLoading]);
+
+  // Check migration status when user is logged in
+  useEffect(() => {
+    if (user?.id && !authLoading) {
+      fetch('/api/migration-status', {
+        credentials: 'include',
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.hasMigrated !== undefined) {
+            setHasMigrated(data.hasMigrated);
+          }
+        })
+        .catch(err => {
+          console.error('Error checking migration status:', err);
+          setHasMigrated(false); // Default to false on error
+        });
+    } else {
+      setHasMigrated(null);
+    }
+  }, [user, authLoading]);
 
   const [showFilters, setShowFilters] = useState(false);
   const [searchInput, setSearchInput] = useState('');
@@ -371,7 +394,8 @@ export function Dashboard() {
           <Profile />
         ) : activeView === 'data' ? (
           <div className="space-y-8">
-            <DataMigration />
+            {/* Only show DataMigration if migration hasn't been completed */}
+            {hasMigrated === false && <DataMigration />}
             <DataManagement />
           </div>
         ) : null}
