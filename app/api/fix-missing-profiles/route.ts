@@ -33,9 +33,6 @@ export async function GET(req: NextRequest): Promise<NextResponse<{
 
     // Find all users
     const allUsers = await prisma.user.findMany({
-      include: {
-        memberProfile: true,
-      },
       select: {
         id: true,
         email: true,
