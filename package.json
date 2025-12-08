@@ -11,7 +11,9 @@
     "migrate:dev": "prisma migrate dev",
     "start": "next start",
     "start:lan": "next start -H 0.0.0.0 -p 3000",
-    "lint": "next lint"
+    "lint": "next lint",
+    "studio": "dotenv -e .env.local -- prisma studio",
+    "studio:win": "scripts\\prisma-studio.bat"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
@@ -19,13 +21,13 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@prisma/client": "^6.19.0",
     "bcryptjs": "^3.0.3",
-    "pg": "^8.11.3",
     "canvas-confetti": "^1.9.3",
     "date-fns": "^3.3.1",
     "firebase": "^12.6.0",
     "framer-motion": "^11.3.0",
     "lucide-react": "^0.378.0",
     "next": "14.2.5",
+    "pg": "^8.11.3",
     "prisma": "^6.19.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -38,6 +40,7 @@
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.19",
     "dotenv": "^17.2.3",
+    "dotenv-cli": "^11.0.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
     "postcss": "^8.4.38",
