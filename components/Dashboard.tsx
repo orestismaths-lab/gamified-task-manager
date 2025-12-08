@@ -139,12 +139,6 @@ export function Dashboard() {
         }}
         onSuccess={() => setShowAuthModal(false)}
       />
-      <MemberSelectionModal
-        isOpen={showMemberSelectionModal}
-        onComplete={() => {
-          setShowMemberSelectionModal(false);
-        }}
-      />
       <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
         {/* Burger Menu */}
         <SidebarMenu activeView={activeView} onViewChange={setActiveView} />
