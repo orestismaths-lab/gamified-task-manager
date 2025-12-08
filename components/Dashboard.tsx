@@ -25,7 +25,6 @@ import { setupNotificationCheck } from '@/lib/notifications';
 import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from './AuthModal';
 import { StorageIndicator } from './StorageIndicator';
-import { DataMigration } from './DataMigration';
 
 type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export' | 'profile';
 
