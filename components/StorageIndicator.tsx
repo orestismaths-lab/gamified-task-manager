@@ -153,7 +153,7 @@ export function DatabaseStorageTest() {
             To verify that your tasks are stored in the database (not localStorage):
           </p>
           <ol className="text-sm text-blue-700 dark:text-blue-400 list-decimal list-inside space-y-1 mb-3">
-            <li>Create a new task (if you haven't already)</li>
+            <li>Create a new task (if you haven&apos;t already)</li>
             <li>Note how many tasks you have: <strong>{tasks.length}</strong></li>
             <li>Click the button below to clear localStorage</li>
             <li>After the page reloads, check if your tasks are still visible</li>
