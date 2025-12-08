@@ -74,6 +74,13 @@ export async function POST(req: NextRequest): Promise<NextResponse<AuthResponse 
           email,
           password: hashedPassword,
           name: name || email.split('@')[0] || 'User',
+          // Automatically create MemberProfile for new users
+          memberProfile: {
+            create: {
+              xp: 0,
+              level: 1,
+            },
+          },
         },
         select: {
           id: true,
@@ -81,6 +88,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<AuthResponse 
           name: true,
         },
       });
+      logError('Register - Created user with MemberProfile', { userId: user.id, email: user.email });
     } catch (error) {
       logError('Register - Create user', error, { email });
 
