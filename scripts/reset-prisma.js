@@ -15,8 +15,15 @@ try {
   // Step 1: Check if Prisma Studio is running
   console.log('📋 Step 1: Checking for running Prisma processes...');
   try {
-    execSync('tasklist /FI "IMAGENAME eq node.exe" /FO CSV', { encoding: 'utf8' });
-    console.log('   ⚠️  If Prisma Studio is running, please close it first');
+    const result = execSync('tasklist /FI "IMAGENAME eq node.exe" /FO CSV', { encoding: 'utf8' });
+    const nodeProcesses = result.split('\n').filter(line => line.includes('node.exe')).length - 1;
+    if (nodeProcesses > 0) {
+      console.log(`   ⚠️  Found ${nodeProcesses} Node.js process(es) running`);
+      console.log('   💡 To kill them, run:');
+      console.log('      Windows: scripts\\kill-prisma-processes.bat');
+      console.log('      PowerShell: .\\scripts\\kill-prisma-processes.ps1');
+      console.log('   Or manually close Prisma Studio and any other Node.js processes');
+    }
   } catch (e) {
     // Ignore
   }
