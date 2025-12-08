@@ -80,9 +80,22 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
           });
 
           if (existingTask) {
-            logError('[migrate-data] Task already exists, skipping:', { title: taskTitle, existingId: existingTask.id });
+            logError('[migrate-data] Task already exists, skipping:', { 
+              title: taskTitle, 
+              existingId: existingTask.id,
+              taskId: task.id,
+            });
             continue;
           }
+          
+          logError('[migrate-data] Importing task:', { 
+            title: taskTitle,
+            originalId: task.id,
+            priority: task.priority,
+            status: task.status,
+            assignedTo: task.assignedTo,
+            subtasksCount: Array.isArray(task.subtasks) ? task.subtasks.length : 0,
+          });
 
           // Validate priority and status
           const validPriorities = ['low', 'medium', 'high'];
@@ -109,6 +122,34 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
               const parsedDate = new Date(task.dueDate);
               if (!isNaN(parsedDate.getTime())) {
                 dueDate = parsedDate;
+              }
+            }
+          }
+
+          // Handle assignedTo: validate user IDs exist, fallback to current user
+          let assignedUserIds: string[] = [user.id]; // Default to current user
+          
+          if (Array.isArray(task.assignedTo) && task.assignedTo.length > 0) {
+            // Validate that assigned user IDs exist in database
+            const validUserIds = task.assignedTo
+              .filter((id): id is string => typeof id === 'string' && id.length > 0);
+            
+            if (validUserIds.length > 0) {
+              const existingUsers = await prisma.user.findMany({
+                where: { id: { in: validUserIds } },
+                select: { id: true },
+              });
+              
+              const existingUserIds = new Set(existingUsers.map(u => u.id));
+              assignedUserIds = validUserIds.filter(id => existingUserIds.has(id));
+              
+              // If no valid assigned users found, fallback to current user
+              if (assignedUserIds.length === 0) {
+                assignedUserIds = [user.id];
+                logError('[migrate-data] No valid assigned users found, using current user', {
+                  taskTitle,
+                  providedAssignedTo: validUserIds,
+                });
               }
             }
           }
@@ -143,9 +184,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
                   : [],
               },
               assignments: {
-                create: [
-                  { userId: user.id }, // Assign to current user by default
-                ],
+                create: assignedUserIds.map(userId => ({ userId })),
               },
             },
           });
@@ -243,14 +282,42 @@ export async function POST(req: NextRequest): Promise<NextResponse<{ success: bo
           logError(`[migrate-data] Error importing member profile:`, error);
         }
       } else {
-        logError('[migrate-data] No matching member found', {
+        // If no matching member found, create a default MemberProfile with 0 XP/Level
+        // This ensures the user has a profile even if no match is found
+        logError('[migrate-data] No matching member found, creating default profile', {
           membersProvided: members.length,
           userEmail: user.email,
           userId: user.id,
           memberEmails: members.map(m => m.email).filter(Boolean),
           memberUserIds: members.map(m => m.userId).filter(Boolean),
         });
-        errors.push(`No matching member found for user ${user.email || user.id}. Checked ${members.length} members.`);
+        
+        try {
+          const existingProfile = await prisma.memberProfile.findUnique({
+            where: { userId: user.id },
+          });
+
+          if (!existingProfile) {
+            // Create default MemberProfile
+            await prisma.memberProfile.create({
+              data: {
+                userId: user.id,
+                xp: 0,
+                level: 1,
+              },
+            });
+            importedMembers++;
+            logError('[migrate-data] Created default MemberProfile', { userId: user.id });
+          } else {
+            logError('[migrate-data] MemberProfile already exists', { userId: user.id });
+          }
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          errors.push(`Could not create default member profile: ${errorMsg}`);
+          logError('[migrate-data] Error creating default profile:', error);
+        }
+        
+        errors.push(`No matching member found for user ${user.email || user.id}. Created default profile. Checked ${members.length} members.`);
       }
     } else {
       logError('[migrate-data] No members to migrate', { membersProvided: !!members, isArray: Array.isArray(members), length: members?.length });
