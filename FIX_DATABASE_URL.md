@@ -10,6 +10,22 @@ Error validating datasource `db`: the URL must start with the protocol `postgres
 
 ## ✅ Solution
 
+### Quick Fix (Recommended)
+
+Τρέξε αυτό το script που θα διορθώσει τα πάντα:
+```bash
+cd task_manager
+node scripts/reset-prisma.js
+```
+
+Αυτό θα:
+1. Κλείσει το Prisma Studio αν είναι ανοιχτό
+2. Καθαρίσει το Prisma Client cache
+3. Regenerate το Prisma Client
+4. Επαληθεύσει το DATABASE_URL
+
+### Manual Fix
+
 ### Step 1: Ελέγξε το DATABASE_URL
 
 Τρέξε το script:
