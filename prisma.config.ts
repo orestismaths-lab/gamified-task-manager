@@ -2,12 +2,20 @@
 // npm install --save-dev prisma dotenv
 import { config } from "dotenv";
 import { resolve } from "path";
+import { existsSync } from "fs";
 import { defineConfig, env } from "prisma/config";
 
-// Explicitly load .env.local file
-config({ path: resolve(process.cwd(), ".env.local") });
-// Also try .env as fallback
-config({ path: resolve(process.cwd(), ".env") });
+// Explicitly load .env files if they exist (for local development)
+// In production (Vercel), DATABASE_URL is set via environment variables
+const envLocalPath = resolve(process.cwd(), ".env.local");
+const envPath = resolve(process.cwd(), ".env");
+
+if (existsSync(envLocalPath)) {
+  config({ path: envLocalPath });
+}
+if (existsSync(envPath)) {
+  config({ path: envPath });
+}
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
