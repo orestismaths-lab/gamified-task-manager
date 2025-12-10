@@ -210,6 +210,14 @@ export function EditTaskModal({ task, isOpen, onClose }: EditTaskModalProps) {
                   <textarea
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
+                    onKeyDown={(e) => {
+                      // Explicitly allow all keys including space
+                      // Don't prevent default for space or any other character
+                      if (e.key === 'Escape') {
+                        // Only handle Escape to close modal if needed
+                        return;
+                      }
+                    }}
                     rows={4}
                     className="w-full px-4 py-2 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 dark:focus:border-purple-500 focus:outline-none resize-none whitespace-pre-wrap"
                     style={{ whiteSpace: 'pre-wrap' }}

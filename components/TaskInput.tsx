@@ -254,6 +254,14 @@ export function TaskInput() {
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  onKeyDown={(e) => {
+                    // Explicitly allow all keys including space
+                    // Don't prevent default for any character input
+                    if (e.key === 'Escape') {
+                      // Only handle Escape if needed
+                      return;
+                    }
+                  }}
                   placeholder="Add description (optional)"
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 dark:focus:border-purple-500 focus:outline-none resize-none transition-colors whitespace-pre-wrap"
