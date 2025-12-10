@@ -22,6 +22,7 @@ export function sanitizeText(text: string): string {
 /**
  * Sanitizes HTML content (for descriptions that might contain formatting)
  * More permissive than sanitizeText but still removes dangerous content
+ * Does NOT trim - trimming should be done by the caller if needed
  */
 export function sanitizeHTML(html: string): string {
   if (typeof html !== 'string') {
@@ -29,12 +30,12 @@ export function sanitizeHTML(html: string): string {
   }
   
   // Remove script tags and event handlers
+  // Preserve all spaces including multiple spaces
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/javascript:/gi, '')
     .replace(/on\w+="[^"]*"/gi, '')
-    .replace(/on\w+='[^']*'/gi, '')
-    .trim();
+    .replace(/on\w+='[^']*'/gi, '');
 }
 
 /**
@@ -75,6 +76,7 @@ export function sanitizeTaskTitle(title: unknown): string | null {
 
 /**
  * Validates and sanitizes task description
+ * Preserves spaces within the text, only trims leading/trailing whitespace
  */
 export function sanitizeTaskDescription(description: unknown): string | null {
   if (description === null || description === undefined) {
@@ -85,7 +87,11 @@ export function sanitizeTaskDescription(description: unknown): string | null {
     return null;
   }
   
-  const sanitized = sanitizeHTML(description.trim());
+  // First sanitize to remove dangerous content, preserving all spaces
+  let sanitized = sanitizeHTML(description);
+  
+  // Only trim leading/trailing whitespace after sanitization
+  sanitized = sanitized.trim();
   
   if (sanitized.length === 0) {
     return null;

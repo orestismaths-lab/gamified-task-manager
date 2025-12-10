@@ -20,13 +20,13 @@ interface TaskManagerContextType {
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
-  toggleTaskComplete: (id: string) => void;
+  toggleTaskComplete: (id: string) => Promise<void>;
   
   // Subtask operations
-  addSubtask: (taskId: string, subtask: Omit<Subtask, 'id'>) => void;
-  updateSubtask: (taskId: string, subtaskId: string, updates: Partial<Subtask>) => void;
-  toggleSubtaskComplete: (taskId: string, subtaskId: string) => void;
-  deleteSubtask: (taskId: string, subtaskId: string) => void;
+  addSubtask: (taskId: string, subtask: Omit<Subtask, 'id'>) => Promise<void>;
+  updateSubtask: (taskId: string, subtaskId: string, updates: Partial<Subtask>) => Promise<void>;
+  toggleSubtaskComplete: (taskId: string, subtaskId: string) => Promise<void>;
+  deleteSubtask: (taskId: string, subtaskId: string) => Promise<void>;
   
   // Member operations
   addMember: (member: Omit<Member, 'id' | 'xp' | 'level'>) => Promise<void>;
@@ -345,7 +345,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     }
   }, [tasks, removeXP, user]);
 
-  const toggleTaskComplete = useCallback((id: string) => {
+  const toggleTaskComplete = useCallback(async (id: string) => {
     const task = tasks.find(t => t.id === id);
     if (!task) return;
 
@@ -404,17 +404,39 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
           // Create next occurrence
           const now = new Date().toISOString();
-          const nextTask: Task = {
+          const nextTaskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
             ...task,
-            id: generateId(),
             completed: false,
             dueDate: nextDueDate.toISOString(),
-            createdAt: now,
-            updatedAt: now,
             parentRecurringTaskId: task.id,
             subtasks: task.subtasks.map(st => ({ ...st, completed: false })), // Reset subtasks
           };
-          setTasks(prev => [...prev, nextTask]);
+          
+          // Use addTask to save to backend if logged in
+          if (user?.id) {
+            try {
+              await addTask(nextTaskData);
+            } catch (error) {
+              console.error('Error creating recurring task:', error);
+              // Fallback: add to local state (will be lost on refresh, but better than nothing)
+              const nextTask: Task = {
+                ...nextTaskData,
+                id: generateId(),
+                createdAt: now,
+                updatedAt: now,
+              };
+              setTasks(prev => [...prev, nextTask]);
+            }
+          } else {
+            // Not logged in - save to localStorage
+            const nextTask: Task = {
+              ...nextTaskData,
+              id: generateId(),
+              createdAt: now,
+              updatedAt: now,
+            };
+            setTasks(prev => [...prev, nextTask]);
+          }
         }
       } else {
         // Remove XP for uncompleting task (async - fire and forget)
@@ -425,36 +447,82 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         });
       }
     }
-  }, [tasks, updateTask, addXP, removeXP, generateId]);
+  }, [tasks, updateTask, addXP, removeXP, generateId, addTask, user]);
 
   // Subtask operations
-  const addSubtask = useCallback((taskId: string, subtaskData: Omit<Subtask, 'id'>) => {
+  const addSubtask = useCallback(async (taskId: string, subtaskData: Omit<Subtask, 'id'>) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
     const subtask: Subtask = {
       ...subtaskData,
       id: generateId(),
     };
-    setTasks(prev => prev.map(task =>
-      task.id === taskId
-        ? { ...task, subtasks: [...task.subtasks, subtask], updatedAt: new Date().toISOString() }
-        : task
-    ));
-  }, [generateId]);
+    const updatedSubtasks = [...task.subtasks, subtask];
 
-  const updateSubtask = useCallback((taskId: string, subtaskId: string, updates: Partial<Subtask>) => {
-    setTasks(prev => prev.map(task =>
-      task.id === taskId
-        ? {
-            ...task,
-            subtasks: task.subtasks.map(st =>
-              st.id === subtaskId ? { ...st, ...updates } : st
-            ),
-            updatedAt: new Date().toISOString(),
-          }
-        : task
-    ));
-  }, []);
+    if (user?.id) {
+      // Save to backend via updateTask
+      try {
+        await updateTask(taskId, { subtasks: updatedSubtasks });
+      } catch (error) {
+        console.error('Error adding subtask:', error);
+        // Fallback to local state update
+        setTasks(prev => prev.map(t =>
+          t.id === taskId
+            ? { ...t, subtasks: updatedSubtasks, updatedAt: new Date().toISOString() }
+            : t
+        ));
+      }
+    } else {
+      // Save to localStorage
+      setTasks(prev => prev.map(t =>
+        t.id === taskId
+          ? { ...t, subtasks: updatedSubtasks, updatedAt: new Date().toISOString() }
+          : t
+      ));
+    }
+  }, [generateId, tasks, user, updateTask]);
 
-  const toggleSubtaskComplete = useCallback((taskId: string, subtaskId: string) => {
+  const updateSubtask = useCallback(async (taskId: string, subtaskId: string, updates: Partial<Subtask>) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    const updatedSubtasks = task.subtasks.map(st =>
+      st.id === subtaskId ? { ...st, ...updates } : st
+    );
+
+    if (user?.id) {
+      // Save to backend via updateTask
+      try {
+        await updateTask(taskId, { subtasks: updatedSubtasks });
+      } catch (error) {
+        console.error('Error updating subtask:', error);
+        // Fallback to local state update
+        setTasks(prev => prev.map(t =>
+          t.id === taskId
+            ? {
+                ...t,
+                subtasks: updatedSubtasks,
+                updatedAt: new Date().toISOString(),
+              }
+            : t
+        ));
+      }
+    } else {
+      // Save to localStorage
+      setTasks(prev => prev.map(t =>
+        t.id === taskId
+          ? {
+              ...t,
+              subtasks: updatedSubtasks,
+              updatedAt: new Date().toISOString(),
+            }
+          : t
+      ));
+    }
+  }, [tasks, user, updateTask]);
+
+  const toggleSubtaskComplete = useCallback(async (taskId: string, subtaskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
@@ -462,7 +530,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     if (!subtask) return;
 
     const newCompleted = !subtask.completed;
-    updateSubtask(taskId, subtaskId, { completed: newCompleted });
+    await updateSubtask(taskId, subtaskId, { completed: newCompleted });
 
     if (task.ownerId) {
       if (newCompleted) {
@@ -475,7 +543,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     }
   }, [tasks, updateSubtask, addXP, removeXP]);
 
-  const deleteSubtask = useCallback((taskId: string, subtaskId: string) => {
+  const deleteSubtask = useCallback(async (taskId: string, subtaskId: string) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
 
@@ -485,16 +553,38 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       removeXP(task.ownerId, 10).catch(err => console.error('Error removing XP:', err));
     }
 
-    setTasks(prev => prev.map(t =>
-      t.id === taskId
-        ? {
-            ...t,
-            subtasks: t.subtasks.filter(st => st.id !== subtaskId),
-            updatedAt: new Date().toISOString(),
-          }
-        : t
-    ));
-  }, [tasks, removeXP]);
+    const updatedSubtasks = task.subtasks.filter(st => st.id !== subtaskId);
+
+    if (user?.id) {
+      // Save to backend via updateTask
+      try {
+        await updateTask(taskId, { subtasks: updatedSubtasks });
+      } catch (error) {
+        console.error('Error deleting subtask:', error);
+        // Fallback to local state update
+        setTasks(prev => prev.map(t =>
+          t.id === taskId
+            ? {
+                ...t,
+                subtasks: updatedSubtasks,
+                updatedAt: new Date().toISOString(),
+              }
+            : t
+        ));
+      }
+    } else {
+      // Save to localStorage
+      setTasks(prev => prev.map(t =>
+        t.id === taskId
+          ? {
+              ...t,
+              subtasks: updatedSubtasks,
+              updatedAt: new Date().toISOString(),
+            }
+          : t
+      ));
+    }
+  }, [tasks, removeXP, user, updateTask]);
 
   // Member operations
   const addMember = useCallback(async (memberData: Omit<Member, 'id' | 'xp' | 'level'>) => {
