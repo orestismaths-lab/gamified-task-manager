@@ -220,9 +220,12 @@ export function KanbanBoard() {
 
   const activeTask = activeId ? filteredTasks.find(t => t.id === activeId) : null;
 
+  // Disable drag when modal is open
+  const isModalOpen = typeof document !== 'undefined' && document.body.hasAttribute('data-modal-open');
+
   return (
     <DndContext
-      sensors={sensors}
+      sensors={isModalOpen ? [] : sensors} // Disable sensors when modal is open
       collisionDetection={closestCenter}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}

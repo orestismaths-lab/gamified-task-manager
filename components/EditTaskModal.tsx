@@ -150,11 +150,15 @@ export function EditTaskModal({ task, isOpen, onClose }: EditTaskModalProps) {
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      // Add data attribute to body to signal modal is open (for DndContext to detect)
+      document.body.setAttribute('data-modal-open', 'true');
     } else {
       document.body.style.overflow = '';
+      document.body.removeAttribute('data-modal-open');
     }
     return () => {
       document.body.style.overflow = '';
+      document.body.removeAttribute('data-modal-open');
     };
   }, [isOpen]);
 
