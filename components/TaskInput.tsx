@@ -256,11 +256,18 @@ export function TaskInput() {
                   onChange={(e) => setDescription(e.target.value)}
                   onKeyDown={(e) => {
                     // Explicitly allow all keys including space
-                    // Don't prevent default for any character input
+                    // Stop propagation to prevent any parent handlers from interfering
+                    if (e.key === ' ') {
+                      e.stopPropagation();
+                      // Allow default behavior (insert space)
+                      return;
+                    }
                     if (e.key === 'Escape') {
                       // Only handle Escape if needed
                       return;
                     }
+                    // For all other keys, stop propagation to prevent interference
+                    e.stopPropagation();
                   }}
                   placeholder="Add description (optional)"
                   rows={3}

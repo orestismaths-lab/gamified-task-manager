@@ -212,11 +212,18 @@ export function EditTaskModal({ task, isOpen, onClose }: EditTaskModalProps) {
                     onChange={(e) => setEditDescription(e.target.value)}
                     onKeyDown={(e) => {
                       // Explicitly allow all keys including space
-                      // Don't prevent default for space or any other character
+                      // Stop propagation to prevent any parent handlers from interfering
+                      if (e.key === ' ') {
+                        e.stopPropagation();
+                        // Allow default behavior (insert space)
+                        return;
+                      }
                       if (e.key === 'Escape') {
                         // Only handle Escape to close modal if needed
                         return;
                       }
+                      // For all other keys, stop propagation to prevent interference
+                      e.stopPropagation();
                     }}
                     rows={4}
                     className="w-full px-4 py-2 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:border-purple-400 dark:focus:border-purple-500 focus:outline-none resize-none whitespace-pre-wrap"
