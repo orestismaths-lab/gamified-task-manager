@@ -7,7 +7,6 @@ import {
   DndContext,
   DragOverlay,
   closestCenter,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -17,7 +16,6 @@ import {
 } from '@dnd-kit/core';
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -145,10 +143,9 @@ export function KanbanBoard() {
       activationConstraint: {
         distance: 8, // Require 8px of movement before starting drag
       },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
     })
+    // Removed KeyboardSensor to prevent interference with input/textarea keyboard events
+    // Users can still drag with mouse/touch
   );
 
   const tasksByStatus = useMemo(() => {
