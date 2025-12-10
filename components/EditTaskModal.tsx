@@ -119,18 +119,31 @@ export function EditTaskModal({ task, isOpen, onClose }: EditTaskModalProps) {
 
   // Close on Escape key (but not when typing in input/textarea)
   useEffect(() => {
+    if (!isOpen) return;
+    
     const handleEscape = (e: KeyboardEvent) => {
-      // Don't handle Escape if user is typing in an input or textarea
+      // Always allow keyboard events in input/textarea/select elements
       const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-        return;
+      if (target) {
+        const tagName = target.tagName;
+        if (tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT') {
+          // Don't interfere with any keyboard events in form elements
+          return;
+        }
+        // Also check if target is inside a form element
+        const isInsideForm = target.closest('form') || target.closest('input') || target.closest('textarea') || target.closest('select');
+        if (isInsideForm && (tagName !== 'BUTTON' || e.key !== 'Escape')) {
+          // Allow all keyboard events inside form elements (except Escape on buttons)
+          return;
+        }
       }
-      if (e.key === 'Escape' && isOpen) {
+      // Only handle Escape key for closing modal
+      if (e.key === 'Escape') {
         handleClose();
       }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    window.addEventListener('keydown', handleEscape, true); // Use capture phase
+    return () => window.removeEventListener('keydown', handleEscape, true);
   }, [isOpen, handleClose]);
 
   // Prevent body scroll when modal is open
