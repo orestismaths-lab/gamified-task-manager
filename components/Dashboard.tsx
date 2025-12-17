@@ -25,6 +25,7 @@ import { setupNotificationCheck } from '@/lib/notifications';
 import { useAuth } from '@/context/AuthContext';
 import { AuthModal } from './AuthModal';
 import { StorageIndicator } from './StorageIndicator';
+import { USE_API } from '@/lib/constants';
 
 type ViewType = 'tasks' | 'members' | 'data' | 'statistics' | 'templates' | 'calendar' | 'achievements' | 'notifications' | 'dependencies' | 'export' | 'profile';
 
@@ -46,10 +47,13 @@ export function Dashboard() {
     activeFilters,
   } = useTaskManager();
 
-  // Show auth modal if not logged in
+  // Show auth modal if not logged in (only if API is enabled)
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (USE_API && !authLoading && !user) {
       setShowAuthModal(true);
+    } else if (!USE_API) {
+      // If API is disabled, don't show auth modal
+      setShowAuthModal(false);
     }
   }, [user, authLoading]);
 

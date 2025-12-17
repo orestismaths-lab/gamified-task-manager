@@ -6,6 +6,7 @@ import { X, Mail, Lock, User, LogIn, Users, Plus } from 'lucide-react';
 import { authAPI } from '@/lib/api/auth';
 import { membersAPI } from '@/lib/api/members';
 import type { Member } from '@/types';
+import { USE_API } from '@/lib/constants';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -38,6 +39,11 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   }, [step]);
 
   const loadMembers = async () => {
+    if (!USE_API) {
+      // In localStorage mode, don't load members from API
+      setMembers([]);
+      return;
+    }
     try {
       const allMembers = await membersAPI.getMembers();
       setMembers(allMembers);
@@ -49,6 +55,17 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // If API is disabled, close modal and show message
+    if (!USE_API) {
+      setError('Authentication is disabled. The app is running in localStorage-only mode. You can use it without logging in.');
+      setTimeout(() => {
+        onClose();
+        onSuccess(); // Allow app to continue
+      }, 2000);
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -72,6 +89,14 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
 
   const handleMemberSelection = async () => {
     setError('');
+    
+    // If API is disabled, close modal
+    if (!USE_API) {
+      onSuccess();
+      onClose();
+      return;
+    }
+    
     setMemberLoading(true);
 
     try {
@@ -116,7 +141,64 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     }
   };
 
+  // Auto-close if API is disabled
+  useEffect(() => {
+    if (isOpen && !USE_API) {
+      // Close modal after a brief moment to show message
+      const timer = setTimeout(() => {
+        onClose();
+        onSuccess();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, onClose, onSuccess]);
+
   if (!isOpen) return null;
+
+  // If API is disabled, show a simple message
+  if (!USE_API) {
+    return (
+      <AnimatePresence>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 sm:mx-6 overflow-hidden"
+          >
+            <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl sm:text-2xl font-bold">Local Mode</h2>
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-6 text-center">
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                Authentication is disabled. The app is running in localStorage-only mode.
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-500">
+                You can use the app without logging in. All data will be stored in your browser.
+              </p>
+              <button
+                onClick={() => {
+                  onClose();
+                  onSuccess();
+                }}
+                className="mt-4 w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+              >
+                Continue
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </AnimatePresence>
+    );
+  }
 
   return (
     <AnimatePresence>
