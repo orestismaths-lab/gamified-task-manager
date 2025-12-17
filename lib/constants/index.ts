@@ -41,3 +41,19 @@ export const API_ENDPOINTS = {
   MIGRATE: '/api/migrate',
 } as const;
 
+/**
+ * Feature flag: Enable/disable backend API usage
+ * 
+ * When false:
+ * - All data is stored in browser localStorage only
+ * - No API calls are made (auth, tasks, members)
+ * - Works offline and doesn't require a backend database
+ * 
+ * When true:
+ * - Uses backend API for authentication and data storage
+ * - Requires a working backend with database
+ * 
+ * To switch back to API mode, change this to `true`
+ */
+export const USE_API = false;
+

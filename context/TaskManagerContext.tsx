@@ -9,6 +9,7 @@ import { debounce } from '@/lib/debounce';
 import { useAuth } from '@/context/AuthContext';
 import { tasksAPI } from '@/lib/api/tasks';
 import { membersAPI } from '@/lib/api/members';
+import { USE_API } from '@/lib/constants';
 
 interface TaskManagerContextType {
   // State
@@ -68,9 +69,12 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
   });
   const { addXP, removeXP } = useGamification();
 
+  // Determine if API should be used (only if USE_API is true AND user is logged in)
+  const isApiEnabled = USE_API && !!user?.id;
+
   // Load data from API or localStorage
   useEffect(() => {
-    if (user?.id) {
+    if (isApiEnabled) {
       // User is logged in - use API for tasks
       // Backend already filters by user.id, so we get all tasks for this user
       const unsubscribeTasks = tasksAPI.subscribeToTasks(
@@ -152,7 +156,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, authMember?.id]);
+  }, [isApiEnabled, authMember?.id]);
 
   // Debounced save functions to avoid excessive localStorage writes
   const debouncedSaveTasks = useMemo(
@@ -176,24 +180,24 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     []
   );
 
-  // Save to localStorage whenever state changes (debounced) - only if not logged in
+  // Save to localStorage whenever state changes (debounced) - only if API is disabled
   useEffect(() => {
-    if (!user?.id) {
+    if (!isApiEnabled) {
       debouncedSaveTasks(tasks);
     }
-  }, [tasks, debouncedSaveTasks, user?.id]);
+  }, [tasks, debouncedSaveTasks, isApiEnabled]);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!isApiEnabled) {
       debouncedSaveMembers(members);
     }
-  }, [members, debouncedSaveMembers, user?.id]);
+  }, [members, debouncedSaveMembers, isApiEnabled]);
 
   useEffect(() => {
-    if (!user?.id) {
+    if (!isApiEnabled) {
       debouncedSaveSelectedMember(selectedMemberId);
     }
-  }, [selectedMemberId, debouncedSaveSelectedMember, user?.id]);
+  }, [selectedMemberId, debouncedSaveSelectedMember, isApiEnabled]);
 
   // Generate unique ID
   const generateId = useCallback(() => {
@@ -230,10 +234,10 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       createdBy: user?.id || undefined,
     };
 
-    if (user?.id) {
+    if (isApiEnabled) {
       // Save to backend API
       try {
-        const taskId = await tasksAPI.createTask(newTaskData, user.id);
+        const taskId = await tasksAPI.createTask(newTaskData, user!.id);
         // Fetch the created task immediately to update state
         // This ensures cross-device sync works correctly
         try {
@@ -278,7 +282,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       };
       setTasks(prev => [...prev, newTask]);
     }
-  }, [generateId, user, members]);
+  }, [generateId, isApiEnabled, user, members]);
 
   const updateTask = useCallback(async (id: string, updates: Partial<Task>) => {
     // Convert member IDs to user IDs for backend assignment if assignedTo is being updated
@@ -297,7 +301,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       }
     }
     
-    if (user?.id) {
+    if (isApiEnabled) {
       // Update in backend API
       try {
         await tasksAPI.updateTask(id, processedUpdates);
@@ -316,7 +320,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
           : task
       ));
     }
-  }, [user, members]);
+  }, [isApiEnabled, user, members]);
 
   const deleteTask = useCallback(async (id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -329,7 +333,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       });
     }
     
-    if (user?.id) {
+    if (isApiEnabled) {
       // Delete from backend API
       try {
         await tasksAPI.deleteTask(id);
@@ -343,7 +347,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       // Delete from localStorage
       setTasks(prev => prev.filter(task => task.id !== id));
     }
-  }, [tasks, removeXP, user]);
+  }, [tasks, removeXP, isApiEnabled]);
 
   const toggleTaskComplete = useCallback(async (id: string) => {
     const task = tasks.find(t => t.id === id);
@@ -412,8 +416,8 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
             subtasks: task.subtasks.map(st => ({ ...st, completed: false })), // Reset subtasks
           };
           
-          // Use addTask to save to backend if logged in
-          if (user?.id) {
+          // Use addTask to save to backend if API is enabled
+          if (isApiEnabled) {
             try {
               await addTask(nextTaskData);
             } catch (error) {
@@ -447,7 +451,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         });
       }
     }
-  }, [tasks, updateTask, addXP, removeXP, generateId, addTask, user]);
+  }, [tasks, updateTask, addXP, removeXP, generateId, addTask, isApiEnabled]);
 
   // Subtask operations
   const addSubtask = useCallback(async (taskId: string, subtaskData: Omit<Subtask, 'id'>) => {
@@ -460,7 +464,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
     };
     const updatedSubtasks = [...task.subtasks, subtask];
 
-    if (user?.id) {
+    if (isApiEnabled) {
       // Save to backend via updateTask
       try {
         await updateTask(taskId, { subtasks: updatedSubtasks });
@@ -481,7 +485,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
           : t
       ));
     }
-  }, [generateId, tasks, user, updateTask]);
+  }, [generateId, tasks, isApiEnabled, updateTask]);
 
   const updateSubtask = useCallback(async (taskId: string, subtaskId: string, updates: Partial<Subtask>) => {
     const task = tasks.find(t => t.id === taskId);
@@ -491,7 +495,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       st.id === subtaskId ? { ...st, ...updates } : st
     );
 
-    if (user?.id) {
+    if (isApiEnabled) {
       // Save to backend via updateTask
       try {
         await updateTask(taskId, { subtasks: updatedSubtasks });
@@ -520,7 +524,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
           : t
       ));
     }
-  }, [tasks, user, updateTask]);
+  }, [tasks, isApiEnabled, updateTask]);
 
   const toggleSubtaskComplete = useCallback(async (taskId: string, subtaskId: string) => {
     const task = tasks.find(t => t.id === taskId);
@@ -555,7 +559,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
 
     const updatedSubtasks = task.subtasks.filter(st => st.id !== subtaskId);
 
-    if (user?.id) {
+    if (isApiEnabled) {
       // Save to backend via updateTask
       try {
         await updateTask(taskId, { subtasks: updatedSubtasks });
@@ -584,36 +588,29 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
           : t
       ));
     }
-  }, [tasks, removeXP, user, updateTask]);
+  }, [tasks, removeXP, isApiEnabled, updateTask]);
 
   // Member operations
   const addMember = useCallback(async (memberData: Omit<Member, 'id' | 'xp' | 'level'>) => {
-    if (user?.id) {
-      // When logged in, members are users - cannot create new members
+    if (isApiEnabled) {
+      // When API is enabled and logged in, members are users - cannot create new members
       // This should only be used for updating user profile
       throw new Error('Cannot create new members when logged in. Members are users.');
     }
     
-    // For non-logged-in users, fallback to localStorage
-    try {
-      await membersAPI.createMember(memberData);
-      // Real-time listener will update state automatically
-    } catch (error) {
-      console.error('Error creating member:', error);
-      // Fallback to local state only for non-logged-in users
-      const newMember: Member = {
-        ...memberData,
-        id: generateId(),
-        xp: 0,
-        level: 1,
-      };
-      setMembers(prev => [...prev, newMember]);
-    }
-  }, [generateId, user]);
+    // For localStorage mode, save directly to local state
+    const newMember: Member = {
+      ...memberData,
+      id: generateId(),
+      xp: 0,
+      level: 1,
+    };
+    setMembers(prev => [...prev, newMember]);
+  }, [generateId, isApiEnabled]);
 
   const updateMember = useCallback(async (id: string, updates: Partial<Member>) => {
-    if (user?.id) {
-      // When logged in, update via API
+    if (isApiEnabled) {
+      // When API is enabled, update via API
       try {
         await membersAPI.updateMember(id, updates);
         // Real-time listener will update state automatically
@@ -622,19 +619,19 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
         throw error; // Re-throw to show error to user
       }
     } else {
-      // For non-logged-in users, update in localStorage
+      // For localStorage mode, update in local state
       setMembers(prev => prev.map(member =>
         member.id === id ? { ...member, ...updates } : member
       ));
     }
-  }, [user]);
+  }, [isApiEnabled]);
 
   const deleteMember = useCallback(async (id: string) => {
     // Don't allow deleting if it's the only member
     if (members.length <= 1) return;
     
-    if (user?.id) {
-      // Delete from Firestore
+    if (isApiEnabled) {
+      // Delete from API
       try {
         // Delete all tasks owned by this member
         const memberTasks = tasks.filter(task => task.ownerId === id);
@@ -669,7 +666,7 @@ export function TaskManagerProvider({ children }: { children: React.ReactNode })
       }
       setMembers(prev => prev.filter(member => member.id !== id));
     }
-  }, [members, selectedMemberId, user, tasks]);
+  }, [members, selectedMemberId, isApiEnabled, tasks]);
 
   const setSelectedMember = useCallback((memberId: string | null) => {
     setSelectedMemberId(memberId);

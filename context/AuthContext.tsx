@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authAPI, User } from '@/lib/api/auth';
 import { membersAPI } from '@/lib/api/members';
 import { Member } from '@/types';
+import { USE_API } from '@/lib/constants';
 
 interface AuthContextType {
   user: User | null;
@@ -21,9 +22,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Listen to auth state changes
+  // Listen to auth state changes (only if API is enabled)
   useEffect(() => {
     let isMounted = true;
+    
+    // If API is disabled, skip all auth checks and set loading to false
+    if (!USE_API) {
+      setUser(null);
+      setMember(null);
+      setLoading(false);
+      return;
+    }
     
     const unsubscribe = authAPI.onAuthStateChanged(async (apiUser) => {
       if (!isMounted) return;
@@ -60,14 +69,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    if (!USE_API) {
+      throw new Error('Authentication is disabled. Please enable USE_API in lib/constants/index.ts to use authentication.');
+    }
     await authAPI.signIn(email, password);
   };
 
   const signUp = async (email: string, password: string, displayName: string) => {
+    if (!USE_API) {
+      throw new Error('Authentication is disabled. Please enable USE_API in lib/constants/index.ts to use authentication.');
+    }
     await authAPI.register(email, password, displayName);
   };
 
   const signOut = async () => {
+    if (!USE_API) {
+      setUser(null);
+      setMember(null);
+      return;
+    }
     await authAPI.signOut();
     setMember(null);
   };
