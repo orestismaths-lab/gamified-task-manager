@@ -55,5 +55,5 @@ export const API_ENDPOINTS = {
  * 
  * To switch back to API mode, change this to `true`
  */
-export const USE_API = true;
+export const USE_API = false;
 
