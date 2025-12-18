@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:lan": "next dev -H 0.0.0.0 -p 3000",
-    "build": "prisma generate && node scripts/pre-build-check.js && prisma migrate deploy && next build",
-    "postinstall": "prisma generate",
+    "build": "next build",
+    "build:db": "prisma generate && node scripts/pre-build-check.js && prisma migrate deploy && next build",
     "migrate": "prisma migrate deploy",
     "migrate:dev": "prisma migrate dev",
     "start": "next start",
