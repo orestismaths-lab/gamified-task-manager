@@ -49,6 +49,9 @@ export function Dashboard() {
 
   // Show auth modal on first load to let user choose mode (local vs database)
   useEffect(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return;
+    
     // Check if user has already chosen a mode (stored in localStorage)
     const modeChosen = localStorage.getItem('task-manager-mode-chosen');
     
@@ -141,13 +144,17 @@ export function Dashboard() {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => {
-          if (user || localStorage.getItem('task-manager-mode-chosen')) {
-            setShowAuthModal(false);
+          if (typeof window !== 'undefined') {
+            if (user || localStorage.getItem('task-manager-mode-chosen')) {
+              setShowAuthModal(false);
+            }
           }
         }}
         onSuccess={() => setShowAuthModal(false)}
         onModeSelect={(mode) => {
-          localStorage.setItem('task-manager-mode-chosen', mode);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('task-manager-mode-chosen', mode);
+          }
           if (mode === 'local') {
             setShowAuthModal(false);
           }
