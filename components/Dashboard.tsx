@@ -102,7 +102,6 @@ export function Dashboard() {
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Achievement Unlocked! 🎉', {
           body: `${e.detail.achievement.name}: ${e.detail.achievement.description}`,
-          icon: '🎯',
         });
       }
     };
