@@ -47,20 +47,13 @@ export function Dashboard() {
     activeFilters,
   } = useTaskManager();
 
-  // Show auth modal on first load to let user choose mode (local vs database)
+  // Show auth modal if not logged in (only if API is enabled)
   useEffect(() => {
-    // Only run on client side
-    if (typeof window === 'undefined') return;
-    
-    // Check if user has already chosen a mode (stored in localStorage)
-    const modeChosen = localStorage.getItem('task-manager-mode-chosen');
-    
-    if (!modeChosen) {
-      // First time - show mode selection
+    if (USE_API && !authLoading && !user) {
       setShowAuthModal(true);
-    } else if (USE_API && !authLoading && !user) {
-      // Database mode chosen but not logged in
-      setShowAuthModal(true);
+    } else if (!USE_API) {
+      // If API is disabled, don't show auth modal
+      setShowAuthModal(false);
     }
   }, [user, authLoading]);
 
@@ -144,21 +137,9 @@ export function Dashboard() {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => {
-          if (typeof window !== 'undefined') {
-            if (user || localStorage.getItem('task-manager-mode-chosen')) {
-              setShowAuthModal(false);
-            }
-          }
+          if (user) setShowAuthModal(false);
         }}
         onSuccess={() => setShowAuthModal(false)}
-        onModeSelect={(mode) => {
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('task-manager-mode-chosen', mode);
-          }
-          if (mode === 'local') {
-            setShowAuthModal(false);
-          }
-        }}
       />
       <div className="min-h-screen flex bg-gray-50 dark:bg-gray-900">
         {/* Burger Menu */}
