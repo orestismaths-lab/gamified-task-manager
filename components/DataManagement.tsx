@@ -314,7 +314,7 @@ export function DataManagement() {
       >
         <h2 className="text-xl font-semibold text-gray-800 mb-4">Import to Local Storage</h2>
         <p className="text-gray-600 mb-4">
-          Upload a backup file to save it to your browser's local storage. 
+          Upload a backup file to save it to your browser&apos;s local storage. 
           This allows you to work offline with your data.
           <strong className="text-orange-600"> Note: Data will be stored locally in this browser only.</strong>
         </p>
