@@ -312,10 +312,11 @@ export function DataManagement() {
         transition={{ delay: 0.2 }}
         className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200 mb-6"
       >
-        <h2 className="text-xl font-semibold text-gray-800 mb-4">Restore from Backup</h2>
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">Import to Local Storage</h2>
         <p className="text-gray-600 mb-4">
-          Upload a previously downloaded backup file to restore your data. 
-          <strong className="text-red-600"> Warning: This will replace all current data!</strong>
+          Upload a backup file to save it to your browser's local storage. 
+          This allows you to work offline with your data.
+          <strong className="text-orange-600"> Note: Data will be stored locally in this browser only.</strong>
         </p>
         <input
           ref={fileInputRef}
@@ -332,8 +333,12 @@ export function DataManagement() {
           className="inline-block px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-2"
         >
           <Upload className="w-5 h-5" />
-          Upload Backup File
+          Upload & Save to Local Storage
         </motion.label>
+        <p className="text-sm text-blue-600 mt-3 flex items-center gap-2">
+          <Database className="w-4 h-4" />
+          Data will be saved to browser localStorage (works offline)
+        </p>
       </motion.div>
 
       {/* Status Message */}
