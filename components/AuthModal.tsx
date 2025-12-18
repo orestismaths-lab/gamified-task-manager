@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mail, Lock, User, LogIn, Users, Plus } from 'lucide-react';
+import { X, Mail, Lock, User, LogIn, Users, Plus, Database, HardDrive } from 'lucide-react';
 import { authAPI } from '@/lib/api/auth';
 import { membersAPI } from '@/lib/api/members';
 import type { Member } from '@/types';
@@ -12,12 +12,14 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onModeSelect?: (mode: 'local' | 'database') => void;
 }
 
-type AuthStep = 'login' | 'register' | 'selectMember';
+type AuthStep = 'modeSelect' | 'login' | 'register' | 'selectMember';
 
-export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
-  const [step, setStep] = useState<AuthStep>('login');
+export function AuthModal({ isOpen, onClose, onSuccess, onModeSelect }: AuthModalProps) {
+  const [step, setStep] = useState<AuthStep>('modeSelect');
+  const [selectedMode, setSelectedMode] = useState<'local' | 'database' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -141,22 +143,25 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
     }
   };
 
-  // Auto-close if API is disabled
-  useEffect(() => {
-    if (isOpen && !USE_API) {
-      // Close modal after a brief moment to show message
-      const timer = setTimeout(() => {
-        onClose();
-        onSuccess();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, onClose, onSuccess]);
+  // Handle local mode selection
+  const handleLocalMode = () => {
+    setSelectedMode('local');
+    onModeSelect?.('local');
+    onSuccess();
+    onClose();
+  };
+
+  // Handle database mode selection
+  const handleDatabaseMode = () => {
+    setSelectedMode('database');
+    onModeSelect?.('database');
+    setStep('login');
+  };
 
   if (!isOpen) return null;
 
-  // If API is disabled, show a simple message
-  if (!USE_API) {
+  // Mode selection screen
+  if (step === 'modeSelect') {
     return (
       <AnimatePresence>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -168,7 +173,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
           >
             <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 text-white">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl sm:text-2xl font-bold">Local Mode</h2>
+                <h2 className="text-xl sm:text-2xl font-bold">Welcome! Choose Mode</h2>
                 <button
                   onClick={onClose}
                   className="p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -177,21 +182,59 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                 </button>
               </div>
             </div>
-            <div className="p-6 text-center">
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Authentication is disabled. The app is running in localStorage-only mode.
+            <div className="p-6 space-y-4">
+              <p className="text-gray-600 dark:text-gray-400 text-center mb-4">
+                How would you like to store your data?
               </p>
-              <p className="text-sm text-gray-500 dark:text-gray-500">
-                You can use the app without logging in. All data will be stored in your browser.
-              </p>
+
+              {/* Local Mode Option */}
               <button
-                onClick={() => {
-                  onClose();
-                  onSuccess();
-                }}
-                className="mt-4 w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:from-purple-600 hover:to-pink-600 transition-all"
+                onClick={handleLocalMode}
+                className="w-full p-4 rounded-xl border-2 border-blue-200 hover:border-blue-400 bg-blue-50 dark:bg-blue-900/20 transition-all text-left group"
               >
-                Continue
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-blue-500 rounded-xl text-white">
+                    <HardDrive className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-blue-600">
+                      Local Storage
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Data saved in your browser only
+                    </p>
+                  </div>
+                </div>
+                <ul className="mt-3 text-xs text-gray-500 dark:text-gray-400 space-y-1 ml-14">
+                  <li>✓ No login required</li>
+                  <li>✓ Works offline</li>
+                  <li>✓ Data stays on this device</li>
+                </ul>
+              </button>
+
+              {/* Database Mode Option */}
+              <button
+                onClick={handleDatabaseMode}
+                className="w-full p-4 rounded-xl border-2 border-purple-200 hover:border-purple-400 bg-purple-50 dark:bg-purple-900/20 transition-all text-left group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-purple-500 rounded-xl text-white">
+                    <Database className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 dark:text-gray-100 group-hover:text-purple-600">
+                      Cloud Database
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Data synced to the server
+                    </p>
+                  </div>
+                </div>
+                <ul className="mt-3 text-xs text-gray-500 dark:text-gray-400 space-y-1 ml-14">
+                  <li>✓ Login required</li>
+                  <li>✓ Access from any device</li>
+                  <li>✓ Data backed up on server</li>
+                </ul>
               </button>
             </div>
           </motion.div>
